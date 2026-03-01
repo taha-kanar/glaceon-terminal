@@ -1,0 +1,149 @@
+/* ═══ Profile Selector Dropdown ═══ */
+#profile-selector {
+  position: absolute;
+  z-index: 1000;
+  min-width: 200px;
+  background: var(--glass-titlebar);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: 8px;
+  padding: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px) scale(0.97);
+  transition: opacity var(--transition-normal, 180ms), transform var(--transition-normal, 180ms) cubic-bezier(0.2, 0.9, 0.3, 1);
+  box-shadow: var(--shadow-elevated, 0 16px 64px rgba(0, 0, 0, 0.5));
+}
+
+#profile-selector.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.profile-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast, 100ms);
+  letter-spacing: 0.1px;
+}
+
+.profile-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+
+.profile-option:active {
+  transform: scale(0.97);
+}
+
+.profile-option.default {
+  color: var(--text-primary);
+}
+
+.profile-option .profile-icon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.profile-option .profile-name {
+  flex: 1;
+}
+
+.profile-option .profile-shell {
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.profile-separator {
+  height: 1px;
+  background: var(--glass-border);
+  margin: 3px 0;
+}
+
+/* ═══ Profile Editor Modal ═══ */
+#profile-editor-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: none;
+}
+
+#profile-editor-modal.open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-editor .env-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.profile-editor .env-row input {
+  flex: 1;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition-fast, 100ms);
+}
+
+.profile-editor .env-row input:focus {
+  border-color: var(--accent);
+}
+
+.profile-editor .env-row button {
+  padding: 4px 8px;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  color: var(--close-hover);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all var(--transition-fast, 100ms);
+}
+
+.profile-editor .env-row button:hover {
+  background: rgba(247, 118, 142, 0.1);
+}
+
+.profile-editor .btn-add-env {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--glass-border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+  width: 100%;
+  margin-top: 4px;
+  transition: all var(--transition-fast, 100ms);
+  letter-spacing: 0.2px;
+}
+
+.profile-editor .btn-add-env:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}

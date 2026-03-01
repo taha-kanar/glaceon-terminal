@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glaceon Terminal</title>
+  <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css">
+  <link rel="stylesheet" href="styles/styles.css">
+  <link rel="stylesheet" href="../../themes/themes.css">
+  <link rel="stylesheet" href="styles/profiles.css">
+  <link rel="stylesheet" href="styles/search.css">
+  <link rel="stylesheet" href="styles/split-pane.css">
+  <link rel="stylesheet" href="styles/tab-enhancements.css">
+  <link rel="stylesheet" href="styles/quake.css">
+  <link rel="stylesheet" href="styles/command-palette.css">
+  <link rel="stylesheet" href="styles/notifications.css">
+  <link rel="stylesheet" href="styles/snippets.css">
+  <link rel="stylesheet" href="styles/ssh-manager.css">
+  <link rel="stylesheet" href="styles/settings-panel.css">
+  <link rel="stylesheet" href="styles/process-monitor.css">
+  <link rel="stylesheet" href="styles/clipboard-ring.css">
+  <link rel="stylesheet" href="styles/job-tracker.css">
+  <link rel="stylesheet" href="styles/scratch-pad.css">
+  <link rel="stylesheet" href="styles/command-history.css">
+  <link rel="stylesheet" href="styles/pane-drag.css">
+</head>
+<body>
+  <div id="app-background"></div>
+  <div id="app-shell">
+    <!-- Title Bar -->
+    <div id="titlebar">
+      <div id="titlebar-left">
+        <div id="titlebar-drag">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+        </div>
+        <div id="titlebar-actions">
+          <button id="btn-split-h" title="Split Horizontal (Ctrl+Shift+E)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <line x1="12" y1="3" x2="12" y2="21"></line>
+            </svg>
+          </button>
+          <button id="btn-split-v" title="Split Vertical (Ctrl+Shift+D)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+            </svg>
+          </button>
+          <button id="btn-ssh" title="SSH Connections">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </button>
+          <button id="btn-snippets" title="Snippets (Ctrl+Shift+S)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+          </button>
+          <button id="btn-settings" title="Settings">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div id="titlebar-command-bar" title="Command Palette (Ctrl+Shift+P)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <span>Search commands...</span>
+        <kbd>Ctrl+Shift+P</kbd>
+      </div>
+      <div id="titlebar-controls">
+        <button id="btn-minimize" title="Minimize">
+          <svg width="12" height="12" viewBox="0 0 12 12"><rect y="5" width="12" height="2" fill="currentColor"/></svg>
+        </button>
+        <button id="btn-maximize" title="Maximize">
+          <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+        </button>
+        <button id="btn-close" title="Close">
+          <svg width="12" height="12" viewBox="0 0 12 12"><line x1="1" y1="1" x2="11" y2="11" stroke="currentColor" stroke-width="1.5"/><line x1="11" y1="1" x2="1" y2="11" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tab Bar -->
+    <div id="tabbar">
+      <div id="tabs"></div>
+      <button id="btn-new-tab" title="New Terminal (Ctrl+T)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Terminal Container -->
+    <div id="terminal-container"></div>
+  </div>
+
+  <!-- Theme Editor Modal -->
+  <div id="theme-editor-modal"></div>
+
+  <!-- Profile Editor Modal -->
+  <div id="profile-editor-modal"></div>
+
+  <!-- Context Menu -->
+  <div id="context-menu"></div>
+
+  <!-- Command Palette -->
+  <div id="command-palette"></div>
+
+  <!-- Snippet Manager Modal -->
+  <div id="snippet-manager-modal"></div>
+
+  <!-- SSH Manager Modal -->
+  <div id="ssh-manager-modal"></div>
+
+  <!-- Settings Panel -->
+  <div id="settings-panel"></div>
+
+  <!-- Clipboard Ring Popup -->
+  <div id="clipboard-ring-popup"></div>
+
+  <!-- Job Tracker Modal -->
+  <div id="job-tracker-modal"></div>
+
+  <!-- Command History Panel -->
+  <div id="command-history-panel"></div>
+
+  <!-- Encryption Unlock Modal -->
+  <div id="encryption-unlock-modal"></div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,443 @@
+/* ═══ Settings Panel ═══ */
+#settings-panel {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+}
+
+#settings-panel.open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-content {
+  width: 700px;
+  max-height: 620px;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Sidebar ── */
+.settings-sidebar {
+  width: 176px;
+  border-right: 1px solid var(--glass-border);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.settings-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 7px;
+  transition: all var(--transition-fast, 100ms);
+  text-align: left;
+  letter-spacing: 0.1px;
+}
+
+.settings-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+
+.settings-nav-btn.active {
+  background: var(--glass-tab-hover);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.settings-nav-btn:active {
+  transform: scale(0.97);
+}
+
+/* ── Body ── */
+.settings-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+.settings-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.settings-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settings-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+.settings-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  letter-spacing: 0.3px;
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── Setting Items ── */
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.setting-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-label span {
+  font-size: 12.5px;
+  color: var(--text-primary);
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+
+.setting-label small {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+/* ── Inputs ── */
+.setting-input {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 7px;
+  padding: 7px 11px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  width: 200px;
+  transition: border-color var(--transition-fast, 100ms), box-shadow var(--transition-fast, 100ms);
+}
+
+.setting-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.1);
+}
+
+.setting-input-sm {
+  width: 80px;
+  text-align: center;
+}
+
+.setting-select {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 7px;
+  padding: 7px 11px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--transition-fast, 100ms);
+}
+
+.setting-select:focus {
+  border-color: var(--accent);
+}
+
+.setting-select option {
+  background: var(--glass-bg);
+  color: var(--text-primary);
+}
+
+.setting-range {
+  width: 160px;
+  accent-color: var(--accent);
+}
+
+/* ── Toggle Switch ── */
+.setting-toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.setting-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 11px;
+  transition: background var(--transition-normal, 180ms);
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  transition: transform var(--transition-normal, 180ms), background var(--transition-normal, 180ms);
+}
+
+.setting-toggle input:checked + .toggle-slider {
+  background: var(--accent);
+}
+
+.setting-toggle input:checked + .toggle-slider::before {
+  transform: translateX(18px);
+  background: var(--text-primary);
+}
+
+/* ── Theme Cards ── */
+.theme-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: all var(--transition-fast, 100ms);
+}
+
+.theme-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--glass-border-strong);
+}
+
+.theme-card:active {
+  transform: scale(0.97);
+}
+
+.theme-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.theme-card-preview {
+  display: flex;
+  gap: 4px;
+}
+
+.theme-card-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.theme-card-name {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-align: center;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+/* ── Shortcuts Table ── */
+.shortcuts-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.shortcut-label {
+  font-size: 12.5px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.shortcut-key {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 3px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--glass-border);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+/* ── Export Format Buttons ── */
+.export-format-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.export-format-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-primary);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  transition: all var(--transition-fast, 100ms);
+  letter-spacing: 0.1px;
+}
+
+.export-format-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-glow);
+}
+
+.export-format-btn:active {
+  transform: scale(0.98);
+}
+
+.export-format-icon {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
+  padding: 3px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+/* ═══ Notification Rules (F10) ═══ */
+.nr-rule-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  margin-bottom: 4px;
+}
+
+.nr-rule-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.nr-rule-pattern {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.nr-rule-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.nr-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.nr-rule-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.nr-btn-edit,
+.nr-btn-delete {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 100ms;
+}
+
+.nr-btn-edit:hover,
+.nr-btn-delete:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+
+.nr-editor {
+  padding: 8px 0;
+}
+
+.btn-action {
+  padding: 6px 14px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-tab, rgba(255, 255, 255, 0.06));
+  color: var(--text-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 100ms;
+}
+
+.btn-action:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent);
+}

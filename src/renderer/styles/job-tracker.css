@@ -1,0 +1,150 @@
+/* ═══ Job Tracker (F11) ═══ */
+#job-tracker-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+#job-tracker-modal.open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jt-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.jt-panel {
+  position: relative;
+  z-index: 1;
+  width: 520px;
+  max-height: 420px;
+  background: var(--glass-titlebar, rgba(30, 30, 46, 0.95));
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border: 1px solid var(--glass-border-strong, rgba(255, 255, 255, 0.12));
+  border-radius: 14px;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.jt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--glass-border, rgba(255, 255, 255, 0.06));
+}
+
+.jt-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #c0caf5);
+}
+
+.jt-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 100ms;
+}
+
+.jt-close:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+
+.jt-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.jt-empty {
+  text-align: center;
+  color: var(--text-secondary, #565f89);
+  font-size: 13px;
+  padding: 24px 0;
+}
+
+.jt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.jt-table th {
+  text-align: left;
+  padding: 6px 8px;
+  color: var(--text-secondary, #565f89);
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--glass-border, rgba(255, 255, 255, 0.06));
+}
+
+.jt-table td {
+  padding: 6px 8px;
+  color: var(--text-primary, #c0caf5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.jt-pid {
+  color: var(--text-secondary);
+}
+
+.jt-cmd {
+  font-weight: 500;
+}
+
+.jt-tid {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.jt-state {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.jt-state-R {
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+}
+
+.jt-state-S {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.jt-state-T {
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+}
+
+.jt-state-Z {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+}
+
+.jt-state-D {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}

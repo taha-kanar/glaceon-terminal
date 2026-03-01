@@ -1,0 +1,76 @@
+{
+  "name": "glaceon-terminal",
+  "version": "1.0.0",
+  "description": "Glaceon Terminal - Glassmorphism terminal emulator",
+  "author": {
+    "name": "taha",
+    "email": "mustafakanar12@outlook.com"
+  },
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "rebuild": "npx @electron/rebuild",
+    "build": "electron-builder --linux",
+    "build:deb": "electron-builder --linux deb",
+    "build:appimage": "electron-builder --linux AppImage",
+    "build:pacman": "electron-builder --linux pacman",
+    "build:win": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.glaceon.terminal",
+    "productName": "Glaceon Terminal",
+    "icon": "assets/icon.png",
+    "files": [
+      "src/**/*",
+      "data/**/*",
+      "themes/**/*",
+      "assets/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/node-pty/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "assets/icon.png",
+      "category": "TerminalEmulator",
+      "synopsis": "Glaceon Terminal - glassmorphism terminal emulator"
+    }
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.750.0",
+    "@electron/rebuild": "^3.7.1",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-search": "^0.16.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/xterm": "^5.5.0",
+    "electron-store": "^8.2.0",
+    "module-alias": "^2.3.4",
+    "node-pty": "^1.0.0",
+    "pg": "^8.19.0"
+  },
+  "_moduleAliases": {
+    "@data": "data",
+    "@themes": "themes",
+    "@main": "src/main",
+    "@preload": "src/preload",
+    "@renderer": "src/renderer"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^26.8.1"
+  }
+}

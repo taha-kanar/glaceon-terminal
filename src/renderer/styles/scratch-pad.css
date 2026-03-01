@@ -1,0 +1,78 @@
+/* ═══ Scratch Pad ═══ */
+.scratch-pad {
+  position: relative;
+  flex-shrink: 0;
+  border-top: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+  background: var(--glass-tab, rgba(255, 255, 255, 0.04));
+  transition: height 0.2s ease;
+}
+
+.scratch-pad-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 11px;
+  color: var(--text-secondary, #565f89);
+  transition: color var(--transition-fast, 100ms);
+}
+
+.scratch-pad-header:hover {
+  color: var(--text-primary, #c0caf5);
+}
+
+.scratch-pad-toggle-icon {
+  font-size: 8px;
+  width: 12px;
+  text-align: center;
+}
+
+.scratch-pad-label {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.scratch-pad-chars {
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.5;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.scratch-pad-body {
+  padding: 0 8px 8px;
+}
+
+.scratch-pad.collapsed .scratch-pad-body {
+  display: none;
+}
+
+.scratch-pad-textarea {
+  width: 100%;
+  height: 100px;
+  min-height: 60px;
+  max-height: 200px;
+  resize: vertical;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text-primary, #c0caf5);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast, 100ms);
+}
+
+.scratch-pad-textarea:focus {
+  border-color: var(--accent, #7aa2f7);
+}
+
+.scratch-pad-textarea::placeholder {
+  color: var(--text-secondary, #565f89);
+  opacity: 0.5;
+}

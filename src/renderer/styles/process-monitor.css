@@ -1,0 +1,44 @@
+/* ═══ Process Monitor Popup (F4) ═══ */
+.process-monitor-popup {
+  position: fixed;
+  z-index: 9000;
+  display: none;
+  background: var(--glass-titlebar, rgba(30, 30, 46, 0.92));
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border: 1px solid var(--glass-border-strong, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-width: 160px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.pm-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent, #7aa2f7);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--glass-border, rgba(255, 255, 255, 0.06));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pm-stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  padding: 3px 0;
+}
+
+.pm-label {
+  color: var(--text-secondary, #565f89);
+  font-weight: 500;
+}
+
+.pm-value {
+  color: var(--text-primary, #c0caf5);
+  font-weight: 600;
+}
