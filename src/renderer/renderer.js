@@ -952,6 +952,7 @@ terminalContainer.addEventListener('contextmenu', async (e) => {
   const paneEl = e.target.closest('.pane');
   if (!paneEl) return;
   e.preventDefault();
+  e.stopPropagation();
 
   const paneId = paneEl.dataset.paneId;
   if (!activeTabId) return;
