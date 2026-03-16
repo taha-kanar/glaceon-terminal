@@ -32,6 +32,7 @@ const DEFAULT_SETTINGS = {
   restoreSession: true,
   loggingEnabled: false,
   logDirectory: '',
+  scratchPadEnabled: false,
 };
 
 function init(opts) {
@@ -272,6 +273,16 @@ function renderGeneral() {
         </div>
         <label class="setting-toggle">
           <input type="checkbox" id="set-restoreSession" ${settings.restoreSession !== false ? 'checked' : ''} />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-item">
+        <div class="setting-label">
+          <span>Scratch Pad</span>
+          <small>Show a collapsible notepad per tab (Ctrl+Shift+N)</small>
+        </div>
+        <label class="setting-toggle">
+          <input type="checkbox" id="set-scratchPadEnabled" ${settings.scratchPadEnabled ? 'checked' : ''} />
           <span class="toggle-slider"></span>
         </label>
       </div>
@@ -900,6 +911,7 @@ function attachSectionEvents() {
     restoreSession: 'set-restoreSession',
     loggingEnabled: 'set-loggingEnabled',
     logDirectory: 'set-logDirectory',
+    scratchPadEnabled: 'set-scratchPadEnabled',
   };
 
   for (const [key, id] of Object.entries(inputs)) {

@@ -41,6 +41,7 @@ const schema = {
       restoreSession: true,
       loggingEnabled: false,
       logDirectory: '',
+      scratchPadEnabled: false,
     },
   },
   keybindings: { type: 'object', default: {} },

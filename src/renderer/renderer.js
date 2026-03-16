@@ -28,6 +28,11 @@ const jobTracker = require('@renderer/job-tracker');
 const tilingLayouts = require('@renderer/tiling-layouts');
 const scratchPad = require('@renderer/scratch-pad');
 const commandHistory = require('@renderer/command-history');
+
+function isScratchPadEnabled() {
+  const s = settingsPanel.getSettings();
+  return s.scratchPadEnabled === true;
+}
 const sshHealth = require('@renderer/ssh-health');
 const paneDrag = require('@renderer/pane-drag');
 
@@ -190,8 +195,10 @@ async function createTab(profileId) {
     }
   });
 
-  // Create scratch pad
-  scratchPad.createForTab(id, wrapper);
+  // Create scratch pad (if enabled)
+  if (isScratchPadEnabled()) {
+    scratchPad.createForTab(id, wrapper);
+  }
   wrapper.addEventListener('scratch-pad-resize', () => {
     const te = tabs.get(id);
     if (te) requestAnimationFrame(() => splitPane.refitPaneTree(te.rootPane));
@@ -822,7 +829,7 @@ document.addEventListener('keydown', (e) => {
   // Ctrl+Shift+N: Scratch Pad
   if (e.ctrlKey && e.shiftKey && e.key === 'N') {
     e.preventDefault();
-    if (activeTabId) scratchPad.toggle(activeTabId);
+    if (activeTabId && isScratchPadEnabled()) scratchPad.toggle(activeTabId);
   }
   // Ctrl+Shift+H: Command History
   if (e.ctrlKey && e.shiftKey && e.key === 'H') {
@@ -914,7 +921,9 @@ async function applyLayout(layoutId) {
 
   // Re-create scratch pad (it was removed when wrapper was cleared)
   scratchPad.removeForTab(activeTabId);
-  scratchPad.createForTab(activeTabId, tabEntry.wrapper);
+  if (isScratchPadEnabled()) {
+    scratchPad.createForTab(activeTabId, tabEntry.wrapper);
+  }
 
   requestAnimationFrame(() => {
     splitPane.refitPaneTree(tabEntry.rootPane);
@@ -1296,9 +1305,11 @@ async function restoreSession() {
       }
     });
 
-    // Create and restore scratch pad
-    scratchPad.createForTab(tabId, wrapper);
-    scratchPad.restoreForTab(tabId, savedTab.scratchPad);
+    // Create and restore scratch pad (if enabled)
+    if (isScratchPadEnabled()) {
+      scratchPad.createForTab(tabId, wrapper);
+      scratchPad.restoreForTab(tabId, savedTab.scratchPad);
+    }
     wrapper.addEventListener('scratch-pad-resize', () => {
       const te = tabs.get(tabId);
       if (te) requestAnimationFrame(() => splitPane.refitPaneTree(te.rootPane));
@@ -1469,6 +1480,22 @@ async function init() {
         const tabEntry = tabs.get(activeTabId);
         if (tabEntry) splitPane.refitPaneTree(tabEntry.rootPane);
       }
+      // Toggle scratch pads for all tabs when setting changes
+      if (newSettings.scratchPadEnabled) {
+        tabs.forEach((entry, tabId) => {
+          if (!scratchPad.getForTab(tabId)) {
+            scratchPad.createForTab(tabId, entry.wrapper);
+          }
+        });
+      } else {
+        tabs.forEach((_entry, tabId) => {
+          scratchPad.removeForTab(tabId);
+        });
+        // Refit all tabs after removing scratch pads
+        tabs.forEach((entry) => {
+          requestAnimationFrame(() => splitPane.refitPaneTree(entry.rootPane));
+        });
+      }
     },
   });
 
@@ -1560,7 +1587,9 @@ async function init() {
       leaf.wrapper.style.flex = '';
       wrapper.appendChild(leaf.wrapper);
 
-      scratchPad.createForTab(id, wrapper);
+      if (isScratchPadEnabled()) {
+        scratchPad.createForTab(id, wrapper);
+      }
       wrapper.addEventListener('scratch-pad-resize', () => {
         const te = tabs.get(id);
         if (te) requestAnimationFrame(() => splitPane.refitPaneTree(te.rootPane));
@@ -1705,7 +1734,7 @@ function registerPaletteActions() {
     { id: 'settings', label: 'Open Settings', category: 'Tools', handler: () => settingsPanel.toggle() },
     { id: 'clipboard-ring', label: 'Clipboard Ring', category: 'Tools', shortcut: 'Ctrl+Alt+V', handler: () => clipboardRing.openPopup() },
     { id: 'job-tracker', label: 'Background Job Tracker', category: 'Tools', shortcut: 'Ctrl+Shift+J', handler: () => jobTracker.toggle() },
-    { id: 'toggle-scratch-pad', label: 'Toggle Scratch Pad', category: 'Tools', shortcut: 'Ctrl+Shift+N', handler: () => { if (activeTabId) scratchPad.toggle(activeTabId); } },
+    { id: 'toggle-scratch-pad', label: 'Toggle Scratch Pad', category: 'Tools', shortcut: 'Ctrl+Shift+N', handler: () => { if (activeTabId && isScratchPadEnabled()) scratchPad.toggle(activeTabId); } },
     { id: 'command-history', label: 'Command History', category: 'Tools', shortcut: 'Ctrl+Shift+H', handler: () => commandHistory.toggle() },
     { id: 'clear-command-history', label: 'Clear Command History', category: 'Tools', handler: () => commandHistory.clearHistory() },
 
