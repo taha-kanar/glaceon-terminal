@@ -1,5 +1,5 @@
 import { cycle } from '../shared/cycle';
-import type { PaneId, TabId } from '../shared/ids';
+import type { PaneId, TabGroupId, TabId } from '../shared/ids';
 import {
   containsLeaf,
   equalize,
@@ -14,6 +14,7 @@ import {
   type SplitAxis,
   type SplitPath,
 } from '../pane/pane-tree';
+import { normalizeTabs } from './tab-order';
 
 export interface Tab {
   readonly id: TabId;
@@ -21,18 +22,51 @@ export interface Tab {
   readonly activePane: PaneId;
   /** When true the active pane fills the whole tab. */
   readonly zoomed: boolean;
+  /** A name the user gave the tab; otherwise it is named after its process. */
+  readonly title: string | undefined;
+  readonly color: TabColor | undefined;
+  /** Locked tabs and their panes cannot be closed. */
+  readonly locked: boolean;
+  /** Pinned tabs sit first, show only their index and cannot be closed. */
+  readonly pinned: boolean;
+  readonly group: TabGroupId | undefined;
 }
 
-/** The tabs of one window. Invariant: `activeTab` names an existing tab whenever there is one. */
+export const TAB_COLORS = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple'] as const;
+export type TabColor = (typeof TAB_COLORS)[number];
+
+export interface TabGroup {
+  readonly id: TabGroupId;
+  readonly name: string;
+  readonly color: TabColor;
+  /** Collapsed groups show only their label (and the active tab, when it is in the group). */
+  readonly collapsed: boolean;
+}
+
+/**
+ * The tabs of one window. Invariants: `activeTab` names an existing tab whenever there is one;
+ * pinned tabs come first; the tabs of a group are adjacent; every group has at least one tab.
+ */
 export interface Workspace {
   readonly tabs: readonly Tab[];
   readonly activeTab: TabId | undefined;
+  readonly groups: readonly TabGroup[];
 }
 
-export const EMPTY_WORKSPACE: Workspace = { tabs: [], activeTab: undefined };
+export const EMPTY_WORKSPACE: Workspace = { tabs: [], activeTab: undefined, groups: [] };
 
 export function createTab(id: TabId, pane: PaneId): Tab {
-  return { id, root: paneLeaf(pane), activePane: pane, zoomed: false };
+  return {
+    id,
+    root: paneLeaf(pane),
+    activePane: pane,
+    zoomed: false,
+    title: undefined,
+    color: undefined,
+    locked: false,
+    pinned: false,
+    group: undefined,
+  };
 }
 
 export function findTab(workspace: Workspace, id: TabId | undefined): Tab | undefined {
@@ -51,12 +85,20 @@ export function allPaneIds(workspace: Workspace): PaneId[] {
   return workspace.tabs.flatMap((tab) => leafIds(tab.root));
 }
 
-/** Inserts a tab right after `after` (or at the end) and activates it. */
+/**
+ * Inserts a tab right after `after` (or at the end) and activates it. A tab opened next to a
+ * grouped tab joins that group; one opened next to a pinned tab goes after the pinned ones.
+ */
 export function addTab(workspace: Workspace, tab: Tab, after?: TabId): Workspace {
   const index = after === undefined ? -1 : workspace.tabs.findIndex((t) => t.id === after);
+  const neighbour = workspace.tabs[index];
+  const placed: Tab =
+    neighbour?.group !== undefined && tab.group === undefined
+      ? { ...tab, group: neighbour.group }
+      : tab;
   const tabs = [...workspace.tabs];
-  tabs.splice(index < 0 ? tabs.length : index + 1, 0, tab);
-  return { tabs, activeTab: tab.id };
+  tabs.splice(index < 0 ? tabs.length : index + 1, 0, placed);
+  return normalizeTabs({ ...workspace, tabs, activeTab: tab.id });
 }
 
 /** Removes a tab. When it was active, its right neighbour (or else its left one) becomes active. */
@@ -64,9 +106,9 @@ export function closeTab(workspace: Workspace, id: TabId): Workspace {
   const index = workspace.tabs.findIndex((tab) => tab.id === id);
   if (index < 0) return workspace;
   const tabs = workspace.tabs.filter((tab) => tab.id !== id);
-  if (workspace.activeTab !== id) return { ...workspace, tabs };
+  if (workspace.activeTab !== id) return normalizeTabs({ ...workspace, tabs });
   const next = tabs[Math.min(index, tabs.length - 1)];
-  return { tabs, activeTab: next?.id };
+  return normalizeTabs({ ...workspace, tabs, activeTab: next?.id });
 }
 
 export function activateTab(workspace: Workspace, id: TabId): Workspace {
@@ -80,14 +122,6 @@ export function cycleTab(workspace: Workspace, offset: number): Workspace {
   const target =
     workspace.activeTab === undefined ? undefined : cycle(ids, workspace.activeTab, offset);
   return target === undefined ? workspace : activateTab(workspace, target);
-}
-
-export function moveTab(workspace: Workspace, id: TabId, toIndex: number): Workspace {
-  const tab = findTab(workspace, id);
-  if (tab === undefined) return workspace;
-  const tabs = workspace.tabs.filter((t) => t.id !== id);
-  tabs.splice(Math.max(0, Math.min(tabs.length, toIndex)), 0, tab);
-  return { ...workspace, tabs };
 }
 
 export function updateTab(workspace: Workspace, id: TabId, update: (tab: Tab) => Tab): Workspace {

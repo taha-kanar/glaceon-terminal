@@ -13,6 +13,14 @@ export interface ProbeTab {
   readonly panes: readonly string[];
   readonly activePane: string;
   readonly zoomed: boolean;
+  readonly title?: string;
+  readonly color?: string;
+  readonly pinned: boolean;
+  readonly locked: boolean;
+  /** Name of the tab's group. */
+  readonly group?: string;
+  /** Pane rectangles in unit coordinates, reading order. */
+  readonly rects: readonly { pane: string; x: number; y: number; width: number; height: number }[];
 }
 
 export interface ProbeSessionInfo {

@@ -1,5 +1,13 @@
 import type { ReadableStore, SessionManager } from '@glaceon/application';
-import { activeTab, asPaneId, leafIds, type PaneId, type Workspace } from '@glaceon/domain';
+import {
+  activeTab,
+  asPaneId,
+  computeLayout,
+  findGroup,
+  leafIds,
+  type PaneId,
+  type Workspace,
+} from '@glaceon/domain';
 import type { XtermViewRegistry } from '@glaceon/infrastructure/renderer';
 import type { E2EProbe } from './global';
 
@@ -36,6 +44,12 @@ export function createE2EProbe(sources: ProbeSources): E2EProbe {
         panes: leafIds(tab.root),
         activePane: tab.activePane,
         zoomed: tab.zoomed,
+        pinned: tab.pinned,
+        locked: tab.locked,
+        ...(tab.title === undefined ? {} : { title: tab.title }),
+        ...(tab.color === undefined ? {} : { color: tab.color }),
+        ...(tab.group === undefined ? {} : { group: findGroup(current, tab.group)?.name ?? '' }),
+        rects: computeLayout(tab.root).panes.map(({ id, rect }) => ({ pane: id, ...rect })),
       }));
     },
     sessionInfo: (pane) => {

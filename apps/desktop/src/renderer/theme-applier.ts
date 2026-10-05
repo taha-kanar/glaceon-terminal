@@ -1,4 +1,4 @@
-import { deriveUiPalette, type Theme } from '@glaceon/domain';
+import { deriveUiPalette, TAB_COLORS, tabColorValue, type Theme } from '@glaceon/domain';
 
 const VARIABLES = {
   surface: '--surface',
@@ -18,5 +18,8 @@ export function applyTheme(root: HTMLElement, theme: Theme, backgroundOpacity: n
   const palette = deriveUiPalette(theme, backgroundOpacity);
   for (const [key, variable] of Object.entries(VARIABLES)) {
     root.style.setProperty(variable, palette[key as keyof typeof VARIABLES]);
+  }
+  for (const color of TAB_COLORS) {
+    root.style.setProperty(`--tab-${color}`, tabColorValue(theme.colors, color));
   }
 }

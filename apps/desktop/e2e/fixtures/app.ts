@@ -16,6 +16,14 @@ export interface ProbeTab {
   readonly panes: readonly string[];
   readonly activePane: string;
   readonly zoomed: boolean;
+  readonly title?: string;
+  readonly color?: string;
+  readonly pinned: boolean;
+  readonly locked: boolean;
+  /** Name of the tab's group. */
+  readonly group?: string;
+  /** Pane rectangles in unit coordinates, reading order. */
+  readonly rects: readonly { pane: string; x: number; y: number; width: number; height: number }[];
 }
 
 interface Probe {
@@ -69,8 +77,10 @@ function wrap(page: Page): GlaceonWindow {
     commandClick: async (text) => {
       const point = await page.evaluate((t) => window.__glaceonE2E.locateText(t), text);
       if (point === undefined) throw new Error(`"${text}" is not on screen`);
-      await page.mouse.move(point.x, point.y);
-      await page.waitForTimeout(100);
+      // Nudge the pointer until xterm has resolved the link under it (a pointer cursor).
+      await page.mouse.move(point.x - 3, point.y);
+      await page.mouse.move(point.x, point.y, { steps: 3 });
+      await page.waitForSelector('.xterm-cursor-pointer', { timeout: 3000 });
       await page.keyboard.down('Meta');
       await page.mouse.click(point.x, point.y);
       await page.keyboard.up('Meta');

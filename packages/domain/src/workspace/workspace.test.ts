@@ -13,13 +13,13 @@ import {
   EMPTY_WORKSPACE,
   equalizePanes,
   focusPane,
-  moveTab,
   resizePane,
   setSplitRatio,
   splitPane,
   toggleZoom,
   type Workspace,
 } from './workspace';
+import { moveTab } from './tab-groups';
 
 const t1 = asTabId('t1');
 const t2 = asTabId('t2');

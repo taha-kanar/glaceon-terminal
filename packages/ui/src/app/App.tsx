@@ -24,6 +24,7 @@ export function App({ model }: AppProps): ReactElement {
   const overlay = useStore(model.overlay);
   const search = useStore(model.search.state);
   const toasts = useStore(model.toasts.items);
+  const renaming = useStore(model.renaming);
   const { actions } = model;
 
   return (
@@ -32,6 +33,8 @@ export function App({ model }: AppProps): ReactElement {
         workspace={workspace}
         sessions={sessions}
         actions={actions}
+        arrange={model.arrange}
+        renaming={renaming}
         newTabLabel={model.labelFor(CommandIds.tabNew)}
       />
       {problems.length > 0 && (
@@ -41,6 +44,7 @@ export function App({ model }: AppProps): ReactElement {
         workspace={workspace}
         sessions={sessions}
         actions={actions}
+        arrange={model.arrange}
         bindSlot={model.bindSlot}
       />
       {search !== undefined && <SearchBar state={search} actions={model.search} />}

@@ -9,7 +9,7 @@ import {
 } from '@glaceon/domain';
 import type { SessionInfo } from '@glaceon/application';
 import { describe, expect, it } from 'vitest';
-import { fakeActions } from '../testing/fake-actions';
+import { fakeActions, fakeArrange } from '../testing/fake-actions';
 import { click, render } from '../testing/render';
 import { TabBar } from './TabBar';
 import { tabTitle } from './tab-title';
@@ -26,7 +26,14 @@ describe('TabBar', () => {
       [a, { shell: 'zsh', process: 'vim' }],
     ]);
     const { container, unmount } = render(
-      <TabBar workspace={workspace} sessions={sessions} actions={fakeActions()} newTabLabel="⌘T" />,
+      <TabBar
+        workspace={workspace}
+        sessions={sessions}
+        actions={fakeActions()}
+        arrange={fakeArrange()}
+        renaming={undefined}
+        newTabLabel="⌘T"
+      />,
     );
     const tabs = container.querySelectorAll('[data-testid="tab"]');
     expect(tabs).toHaveLength(2);
@@ -44,6 +51,8 @@ describe('TabBar', () => {
         workspace={workspace}
         sessions={new Map()}
         actions={actions}
+        arrange={fakeArrange()}
+        renaming={undefined}
         newTabLabel={undefined}
       />,
     );

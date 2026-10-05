@@ -8,7 +8,7 @@ import {
   toggleZoom,
 } from '@glaceon/domain';
 import { describe, expect, it, vi } from 'vitest';
-import { fakeActions } from '../testing/fake-actions';
+import { fakeActions, fakeArrange } from '../testing/fake-actions';
 import { click, render } from '../testing/render';
 import { PaneArea } from './PaneArea';
 
@@ -29,6 +29,7 @@ describe('PaneArea', () => {
         workspace={workspace}
         sessions={new Map()}
         actions={fakeActions()}
+        arrange={fakeArrange()}
         bindSlot={bindSlot}
       />,
     );
@@ -51,6 +52,7 @@ describe('PaneArea', () => {
         workspace={zoomed}
         sessions={new Map()}
         actions={fakeActions()}
+        arrange={fakeArrange()}
         bindSlot={() => () => undefined}
       />,
     );
@@ -68,6 +70,7 @@ describe('PaneArea', () => {
         workspace={workspace}
         sessions={new Map([[b, { exit: { exitCode: 2 } }]])}
         actions={actions}
+        arrange={fakeArrange()}
         bindSlot={() => () => undefined}
       />,
     );

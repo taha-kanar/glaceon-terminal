@@ -14,6 +14,7 @@ import {
   findTab,
   focusPane,
   leafIds,
+  tabOfPane,
   navigate,
   resizePane,
   setSplitRatio,
@@ -40,6 +41,8 @@ export interface WorkspaceServiceDeps {
   readonly confirmation: ConfirmationService;
   readonly settings: ReadableStore<Settings>;
   readonly window: WindowPort;
+  /** Tells the user why something did not happen (e.g. the tab is locked). */
+  readonly notify?: (message: string) => void;
 }
 
 const RESIZE_STEP = 0.05;
@@ -90,6 +93,12 @@ export class WorkspaceService {
 
   async closePane(pane: PaneId | undefined = this.activePane): Promise<void> {
     if (pane === undefined) return;
+    const tab = tabOfPane(this.#workspace, pane);
+    if (tab === undefined) return;
+    if (tab.locked || (tab.pinned && leafIds(tab.root).length === 1)) {
+      this.#refuse(tab.locked ? 'This tab is locked.' : 'Pinned tabs cannot be closed.');
+      return;
+    }
     if (!(await this.#confirmClose([pane], 'Close pane?'))) return;
     this.#update((ws) => closePane(ws, pane));
   }
@@ -102,6 +111,10 @@ export class WorkspaceService {
   async closeTab(id: TabId | undefined = this.#workspace.activeTab): Promise<void> {
     const tab = findTab(this.#workspace, id);
     if (tab === undefined) return;
+    if (tab.locked || tab.pinned) {
+      this.#refuse(tab.locked ? 'This tab is locked.' : 'Pinned tabs cannot be closed.');
+      return;
+    }
     if (!(await this.#confirmClose(leafIds(tab.root), 'Close tab?'))) return;
     this.#update((ws) => closeTab(ws, tab.id));
   }
@@ -162,6 +175,10 @@ export class WorkspaceService {
 
   setRatio(tab: TabId, change: { readonly path: SplitPath; readonly ratio: number }): void {
     this.#update((ws) => setSplitRatio(ws, tab, change));
+  }
+
+  #refuse(message: string): void {
+    this.#deps.notify?.(message);
   }
 
   async #confirmClose(panes: readonly PaneId[], title: string): Promise<boolean> {

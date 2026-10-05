@@ -13,6 +13,8 @@ import { OverlayCommands } from '../overlay/overlay-commands';
 import { OverlayService } from '../overlay/overlay-service';
 import { ThemeCommands } from '../theme/theme-commands';
 import { SearchService } from '../search/search-service';
+import { ArrangementCommands } from './arrangement-commands';
+import { ArrangementService } from './arrangement-service';
 import { FakeSettingsWriter } from '../testing';
 import { WorkspaceService } from './workspace-service';
 
@@ -35,6 +37,16 @@ describe('CoreCommands', () => {
     const fontZoom = new FontZoom(settings);
     const registry = new CommandRegistry();
     registry.registerContribution(new CoreCommands({ workspace, sessions, fontZoom, window }));
+    registry.registerContribution(
+      new ArrangementCommands(
+        new ArrangementService({
+          store,
+          ids: new SequentialIdGenerator(),
+          sessions,
+          notify: () => undefined,
+        }),
+      ),
+    );
     const overlay = new OverlayService(new ContextKeys());
     registry.registerContribution(new OverlayCommands(overlay));
     registry.registerContribution(

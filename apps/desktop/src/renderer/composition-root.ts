@@ -1,4 +1,6 @@
 import {
+  ArrangementCommands,
+  ArrangementService,
   bindPaneLifecycle,
   CommandRegistry,
   computed,
@@ -30,7 +32,13 @@ import {
   requestPtyPort,
   XtermViewRegistry,
 } from '@glaceon/infrastructure/renderer';
-import { App, type AppActions, type AppModel, type TerminalSlotBinder } from '@glaceon/ui';
+import {
+  App,
+  type AppActions,
+  type AppModel,
+  type ArrangeActions,
+  type TerminalSlotBinder,
+} from '@glaceon/ui';
 import { createElement, type ReactElement } from 'react';
 import { linkOpenerFor, settingsWriterFor, windowPortFor } from './bridge-adapters';
 import { createE2EProbe } from './e2e-probe';
@@ -74,6 +82,10 @@ export async function createRendererCompositionRoot(
   const workspaceStore = new ObservableStore<Workspace>(EMPTY_WORKSPACE);
   const confirmation = new ConfirmationService();
   const windowPort = windowPortFor(bridge);
+  const toasts = new ToastService(new BrowserScheduler());
+  const notify = (message: string): void => {
+    toasts.show(message);
+  };
   const workspace = new WorkspaceService({
     store: workspaceStore,
     ids,
@@ -81,7 +93,9 @@ export async function createRendererCompositionRoot(
     confirmation,
     settings,
     window: windowPort,
+    notify,
   });
+  const arrangement = new ArrangementService({ store: workspaceStore, ids, sessions, notify });
 
   // ---- views: measure with the bundled font before the first terminal exists
   await target.document.fonts.load(`${String(settings.get().fontSize)}px "JetBrains Mono"`);
@@ -109,6 +123,8 @@ export async function createRendererCompositionRoot(
   );
   registry.registerContribution(new OverlayCommands(overlay));
   registry.registerContribution(themeCommands);
+  const arrangementCommands = new ArrangementCommands(arrangement);
+  registry.registerContribution(arrangementCommands);
   registry.onDidFail(({ commandId, error }) => {
     console.error(`[renderer] command ${commandId} failed`, error);
   });
@@ -122,7 +138,7 @@ export async function createRendererCompositionRoot(
   });
   const palette = new PaletteService({
     registry,
-    providers: [themeCommands],
+    providers: [themeCommands, arrangementCommands],
     keybindings: keybindings.resolver,
     overlay,
   });
@@ -147,7 +163,6 @@ export async function createRendererCompositionRoot(
     const open = search.state.get();
     if (open !== undefined && open.pane !== workspace.activePane) search.close();
   });
-  const toasts = new ToastService(new BrowserScheduler());
   const links = new LinkService({ opener: linkOpenerFor(bridge), sessions, toasts });
   views.onLinkActivated(({ pane, link, event }) => {
     // Plain clicks select text; ⌘-click opens.
@@ -190,6 +205,31 @@ export async function createRendererCompositionRoot(
     openSettingsFile: () => windowPort.openSettingsFile(),
   };
 
+  const arrange: ArrangeActions = {
+    beginRename: (target) => arrangement.beginRename(target),
+    commitRename: (name) => {
+      arrangement.commitRename(name);
+      refocus();
+    },
+    cancelRename: () => {
+      arrangement.cancelRename();
+      refocus();
+    },
+    setColor: (tab, color) => arrangement.setColor(color, tab),
+    togglePin: (tab) => arrangement.togglePin(tab),
+    toggleLock: (tab) => arrangement.toggleLock(tab),
+    moveTab: (tab, index) => arrangement.moveTab(tab, index),
+    newGroup: (tab) => arrangement.newGroup(tab),
+    setGroup: (tab, group) => arrangement.setGroup(group, tab),
+    toggleGroupCollapsed: (group) => arrangement.toggleGroupCollapsed(group),
+    setGroupColor: (group, color) => arrangement.setGroupColor(group, color),
+    ungroup: (group) => arrangement.ungroup(group),
+    movePane: (source, target, zone) => {
+      arrangement.movePane(source, { target, zone });
+      refocus();
+    },
+  };
+
   const model: AppModel = {
     workspace: workspaceStore,
     sessions: sessions.info,
@@ -198,6 +238,8 @@ export async function createRendererCompositionRoot(
     confirmation: confirmation.current,
     labelFor: (command) => keybindings.resolver.get().labelFor(command),
     actions,
+    arrange,
+    renaming: arrangement.renaming,
     bindSlot,
     overlay: overlay.state,
     closeOverlay: () => overlay.close(),

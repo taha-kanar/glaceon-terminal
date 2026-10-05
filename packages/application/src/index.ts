@@ -43,6 +43,8 @@ export * from './terminal/session-manager';
 export * from './workspace/workspace-service';
 export * from './workspace/pane-lifecycle';
 export * from './workspace/workspace-commands';
+export * from './workspace/arrangement-service';
+export * from './workspace/arrangement-commands';
 
 export { HostConnection, type HostServices } from './pty-host/host-connection';
 export type { ProcessInspector } from './pty-host/process-inspector';

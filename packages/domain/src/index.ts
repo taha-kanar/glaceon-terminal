@@ -2,9 +2,11 @@ export type { Brand } from './shared/brand';
 export {
   asPaneId,
   asSessionId,
+  asTabGroupId,
   asTabId,
   type PaneId,
   type SessionId,
+  type TabGroupId,
   type TabId,
 } from './shared/ids';
 export { err, ok, type Err, type Ok, type Result } from './shared/result';
@@ -21,9 +23,15 @@ export type { PtyExit } from './terminal/pty-exit';
 
 export * from './pane/pane-tree';
 export * from './pane/pane-layout';
+export * from './pane/pane-moves';
+export * from './pane/layout-templates';
 export * from './workspace/workspace';
+export * from './workspace/tab-order';
+export * from './workspace/tab-groups';
+export * from './workspace/pane-arrangement';
 export * from './theme/theme';
 export * from './theme/builtin-themes';
+export * from './theme/tab-colors';
 export * from './keybinding/key-chord';
 export * from './keybinding/when-clause';
 export * from './keybinding/keybinding';

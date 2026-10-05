@@ -6,11 +6,13 @@ import type {
   SearchState,
   Toast,
   ReadableStore,
+  RenameTarget,
   SessionInfoMap,
 } from '@glaceon/application';
 import type { PaneId, Settings, SplitPath, TabId, Workspace } from '@glaceon/domain';
 import type { SearchActions } from '../search/SearchBar';
 import type { SettingsPanelModel } from '../settings/settings-panel-model';
+import type { ArrangeActions } from '../tabs/arrange-actions';
 
 /** Lets a pane slot host the terminal view of a pane. Returns the detach function. */
 export type TerminalSlotBinder = (pane: PaneId, element: HTMLElement) => () => void;
@@ -37,6 +39,8 @@ export interface AppModel {
   readonly confirmation: ReadableStore<ConfirmationRequest | undefined>;
   readonly labelFor: (command: string) => string | undefined;
   readonly actions: AppActions;
+  readonly arrange: ArrangeActions;
+  readonly renaming: ReadableStore<RenameTarget | undefined>;
   readonly bindSlot: TerminalSlotBinder;
   readonly overlay: ReadableStore<OverlayState | undefined>;
   readonly closeOverlay: () => void;

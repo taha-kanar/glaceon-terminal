@@ -1,63 +1,138 @@
+import type { RenameTarget, SessionInfoMap } from '@glaceon/application';
 import { CommandIds, leafIds, type Workspace } from '@glaceon/domain';
-import type { SessionInfoMap } from '@glaceon/application';
-import type { ReactElement } from 'react';
+import { useCallback, useRef, useState, type ReactElement } from 'react';
 import type { AppActions } from '../app/app-model';
+import { ContextMenu, type MenuEntry } from '../menu/ContextMenu';
+import type { ArrangeActions } from './arrange-actions';
+import { RenameInput } from './RenameInput';
+import { tabBarEntries } from './tab-bar-entries';
+import { groupMenu, tabMenu } from './tab-menus';
 import { tabTitle } from './tab-title';
+import { TabItem } from './TabItem';
+import { useTabDrag } from './use-tab-drag';
 
 export interface TabBarProps {
   readonly workspace: Workspace;
   readonly sessions: SessionInfoMap;
   readonly actions: AppActions;
+  readonly arrange: ArrangeActions;
+  readonly renaming: RenameTarget | undefined;
   readonly newTabLabel: string | undefined;
 }
 
-export function TabBar({ workspace, sessions, actions, newTabLabel }: TabBarProps): ReactElement {
+interface OpenMenu {
+  readonly x: number;
+  readonly y: number;
+  readonly entries: readonly MenuEntry[];
+}
+
+export function TabBar(props: TabBarProps): ReactElement {
+  const { workspace, sessions, actions, arrange, renaming } = props;
+  const list = useRef<HTMLDivElement>(null);
+  const [menu, setMenu] = useState<OpenMenu | undefined>(undefined);
+  const closeMenu = useCallback(() => {
+    setMenu(undefined);
+  }, []);
+  const drag = useTabDrag(list, workspace, arrange.moveTab);
+
   return (
     <header className="titlebar">
-      <div className="tabs" role="tablist">
-        {workspace.tabs.map((tab, index) => {
-          const active = tab.id === workspace.activeTab;
-          const panes = leafIds(tab.root).length;
-          return (
-            <div
-              key={tab.id}
-              role="tab"
-              aria-selected={active}
-              className={active ? 'tab tab--active' : 'tab'}
-              data-testid="tab"
-              onMouseDown={(event) => {
-                if (event.button === 1) {
-                  event.preventDefault();
-                  actions.closeTab(tab.id);
-                } else if (event.button === 0) {
-                  actions.selectTab(tab.id);
-                }
-              }}
-            >
-              {index < 9 && <span className="tab__index">{index + 1}</span>}
-              <span className="tab__title">{tabTitle(tab, sessions)}</span>
-              {panes > 1 && <span className="tab__badge">{panes}</span>}
-              <button
-                type="button"
-                className="tab__close"
-                aria-label="Close tab"
-                onMouseDown={(event) => {
-                  event.stopPropagation();
-                }}
+      <div ref={list} className="tabs" role="tablist">
+        {tabBarEntries(workspace).map((entry) => {
+          if (entry.kind === 'group') {
+            const { group } = entry;
+            const editing = renaming?.kind === 'group' && renaming.id === group.id;
+            return (
+              <div
+                key={`group:${group.id}`}
+                className={group.collapsed ? 'tab-group tab-group--collapsed' : 'tab-group'}
+                style={{ background: `var(--tab-${group.color})` }}
+                data-testid="tab-group"
+                title={group.collapsed ? `${group.name} (${String(entry.count)} tabs)` : group.name}
                 onClick={() => {
-                  actions.closeTab(tab.id);
+                  arrange.toggleGroupCollapsed(group.id);
+                }}
+                onDoubleClick={() => {
+                  arrange.beginRename({ kind: 'group', id: group.id });
+                }}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setMenu({
+                    x: event.clientX,
+                    y: event.clientY,
+                    entries: groupMenu(group, arrange),
+                  });
                 }}
               >
-                ×
-              </button>
-            </div>
+                {editing ? (
+                  <RenameInput
+                    initial={group.name}
+                    label="Group name"
+                    onCommit={arrange.commitRename}
+                    onCancel={arrange.cancelRename}
+                  />
+                ) : (
+                  group.name
+                )}
+                {group.collapsed && <span className="tab-group__count">{entry.count}</span>}
+              </div>
+            );
+          }
+          const { tab } = entry;
+          const title = tab.title ?? tabTitle(tab, sessions);
+          return (
+            <TabItem
+              key={tab.id}
+              tab={tab}
+              position={entry.position}
+              title={title}
+              active={tab.id === workspace.activeTab}
+              group={entry.group}
+              panes={leafIds(tab.root).length}
+              renaming={renaming?.kind === 'tab' && renaming.id === tab.id}
+              dragging={drag.state?.tab === tab.id}
+              onSelect={() => {
+                actions.selectTab(tab.id);
+              }}
+              onClose={() => {
+                actions.closeTab(tab.id);
+              }}
+              onRename={() => {
+                arrange.beginRename({ kind: 'tab', id: tab.id });
+              }}
+              onCommitRename={arrange.commitRename}
+              onCancelRename={arrange.cancelRename}
+              onMenu={(event) => {
+                setMenu({
+                  x: event.clientX,
+                  y: event.clientY,
+                  entries: tabMenu(tab, {
+                    workspace,
+                    arrange,
+                    closeTab: () => {
+                      actions.closeTab(tab.id);
+                    },
+                  }),
+                });
+              }}
+              onPointerDown={(event) => {
+                drag.onPointerDown(tab.id, event);
+              }}
+            />
           );
         })}
+        {drag.state !== undefined && (
+          <div
+            className="tabs__marker"
+            style={{ left: drag.state.marker }}
+            data-testid="tab-drop-marker"
+          />
+        )}
         <button
           type="button"
           className="tabs__new"
           aria-label="New tab"
-          title={newTabLabel === undefined ? 'New tab' : `New tab (${newTabLabel})`}
+          title={props.newTabLabel === undefined ? 'New tab' : `New tab (${props.newTabLabel})`}
           onClick={() => {
             actions.runCommand(CommandIds.tabNew);
           }}
@@ -65,6 +140,9 @@ export function TabBar({ workspace, sessions, actions, newTabLabel }: TabBarProp
           +
         </button>
       </div>
+      {menu !== undefined && (
+        <ContextMenu x={menu.x} y={menu.y} entries={menu.entries} onClose={closeMenu} />
+      )}
     </header>
   );
 }
