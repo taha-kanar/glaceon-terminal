@@ -11,6 +11,4 @@ app.on('will-quit', () => {
   root.dispose();
 });
 
-void app.whenReady().then(() => {
-  root.start();
-});
+void app.whenReady().then(() => root.start());

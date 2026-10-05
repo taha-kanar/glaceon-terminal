@@ -7,6 +7,8 @@ export class FakePtyProcess implements PtyProcess {
   readonly data = new Emitter<Uint8Array>();
   readonly exit = new Emitter<PtyExit>();
   killed = false;
+  paused = false;
+  foregroundProcess = 'zsh';
 
   constructor(
     readonly pid: number,
@@ -23,6 +25,14 @@ export class FakePtyProcess implements PtyProcess {
 
   kill(): void {
     this.killed = true;
+  }
+
+  pause(): void {
+    this.paused = true;
+  }
+
+  resume(): void {
+    this.paused = false;
   }
 
   onData(listener: (chunk: Uint8Array) => void): Disposable {

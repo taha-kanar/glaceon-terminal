@@ -49,7 +49,7 @@ const ALLOWED = {
   contracts: { elements: ['domain'], externals: ['zod'], core: false },
   'infra-main': {
     elements: ['domain', 'application', 'contracts'],
-    externals: ['electron'],
+    externals: ['electron', 'zod', 'jsonc-parser'],
     core: true,
   },
   'infra-pty': {
@@ -76,7 +76,7 @@ const ALLOWED = {
   },
   'app-renderer': {
     elements: ['domain', 'application', 'contracts', 'infra-renderer', 'ui'],
-    externals: ['react', 'react-dom'],
+    externals: ['react', 'react-dom', '@fontsource/*'],
     core: false,
   },
   e2e: { elements: [], externals: ['@playwright/test'], core: true },
@@ -166,7 +166,10 @@ export default defineConfig(
         typescript: { alwaysTryTypes: true, project: TS_PROJECTS, noWarnOnMultipleProjects: true },
       },
       'boundaries/elements': ELEMENTS,
-      'boundaries/files': [{ category: 'test', pattern: '**/*.test.{ts,tsx}' }],
+      'boundaries/files': [
+        { category: 'test', pattern: '**/*.{test,arbitrary}.{ts,tsx}' },
+        { category: 'test', pattern: 'packages/ui/src/testing/**' },
+      ],
     },
     rules: {
       'boundaries/dependencies': [

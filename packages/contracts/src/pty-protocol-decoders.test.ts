@@ -12,6 +12,8 @@ describe('decodePtyClientMessage', () => {
     { t: 'input', sid: 'a', data: '' },
     { t: 'resize', sid: 'a', cols: 1, rows: 1 },
     { t: 'kill', sid: 'a' },
+    { t: 'ack', sid: 'a', bytes: 5000 },
+    { t: 'cwd', reqId: 3, sid: 'a' },
   ])('accepts %o', (message) => {
     expect(decodePtyClientMessage(message)).toEqual(message);
   });
@@ -25,6 +27,8 @@ describe('decodePtyClientMessage', () => {
     { t: 'input', sid: 'a', data: 42 },
     { t: 'resize', sid: 'a', cols: '80', rows: 24 },
     { t: 'unknown', sid: 'a' },
+    { t: 'ack', sid: 'a', bytes: -1 },
+    { t: 'cwd', sid: 'a' },
   ])('rejects %o', (message) => {
     expect(decodePtyClientMessage(message)).toBeUndefined();
   });
@@ -34,7 +38,10 @@ describe('decodePtyHostMessage', () => {
   it('accepts well-formed messages', () => {
     const chunk = new Uint8Array([104, 105]);
     for (const message of [
-      { t: 'spawned', reqId: 1, pid: 99 },
+      { t: 'spawned', reqId: 1, pid: 99, shell: 'zsh' },
+      { t: 'process', sid: 'a', name: 'vim', busy: true },
+      { t: 'cwd', reqId: 2 },
+      { t: 'cwd', reqId: 2, cwd: '/tmp' },
       { t: 'spawnFailed', reqId: 1, message: 'nope' },
       { t: 'data', sid: 'a', chunk },
       { t: 'exit', sid: 'a', exitCode: 0 },
@@ -44,8 +51,13 @@ describe('decodePtyHostMessage', () => {
     }
   });
 
-  it('rejects data that is not bytes', () => {
+  it('rejects malformed messages', () => {
     expect(decodePtyHostMessage({ t: 'data', sid: 'a', chunk: 'hi' })).toBeUndefined();
+    expect(decodePtyHostMessage({ t: 'spawned', reqId: 1, pid: 2 })).toBeUndefined();
+    expect(decodePtyHostMessage({ t: 'cwd', reqId: 1, cwd: '' })).toBeUndefined();
+    expect(decodePtyHostMessage({ t: 'process', sid: 'a' })).toBeUndefined();
+    expect(decodePtyHostMessage({ t: 'nope' })).toBeUndefined();
+    expect(decodePtyHostMessage(7)).toBeUndefined();
   });
 });
 

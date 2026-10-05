@@ -1,13 +1,8 @@
-import { HostConnection } from './host-connection';
-import type { PtyProcessFactory } from './pty-process';
+import { HostConnection, type HostServices } from './host-connection';
 import type { SessionOutput } from './session-output';
 import { SessionRegistry } from './session-registry';
-import type { ShellProfile } from './shell-profile';
 
-export interface PtySessionHostDeps {
-  readonly processes: PtyProcessFactory;
-  readonly shell: ShellProfile;
-}
+export type PtySessionHostDeps = HostServices;
 
 /** Entry point of the pty-host process: hands out one connection per client. */
 export class PtySessionHost {

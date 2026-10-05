@@ -14,8 +14,20 @@ export class FakeTerminalView implements TerminalView {
     return this.written.map((chunk) => decoder.decode(chunk)).join('');
   }
 
-  write(chunk: Uint8Array): void {
+  /** When false, write callbacks are queued in `pendingWrites` instead of called at once. */
+  autoAcknowledge = true;
+  readonly pendingWrites: (() => void)[] = [];
+  cleared = 0;
+
+  write(chunk: Uint8Array, written?: () => void): void {
     this.written.push(chunk);
+    if (written === undefined) return;
+    if (this.autoAcknowledge) written();
+    else this.pendingWrites.push(written);
+  }
+
+  clear(): void {
+    this.cleared++;
   }
 
   fit(): TerminalSize {

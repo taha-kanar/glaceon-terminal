@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
@@ -10,38 +10,81 @@ import {
 
 const appDirectory = resolve(import.meta.dirname, '../..');
 
-interface ProbeWindow {
-  readonly __glaceonE2E: {
-    terminalText(): string;
-    sessionPid(): number | undefined;
-  };
+export interface ProbeTab {
+  readonly id: string;
+  readonly active: boolean;
+  readonly panes: readonly string[];
+  readonly activePane: string;
+  readonly zoomed: boolean;
+}
+
+interface Probe {
+  terminalText(pane?: string): string;
+  sessionPid(pane?: string): number | undefined;
+  activePane(): string | undefined;
+  workspace(): ProbeTab[];
+  sessionInfo(pane: string): { process?: string; exit?: { exitCode: number } } | undefined;
+  problems(): string[];
+  fontSize(): number;
+}
+
+declare global {
+  interface Window {
+    readonly __glaceonE2E: Probe;
+  }
 }
 
 export interface GlaceonWindow {
   readonly page: Page;
-  terminalText(): Promise<string>;
-  sessionPid(): Promise<number | undefined>;
+  terminalText(pane?: string): Promise<string>;
+  sessionPid(pane?: string): Promise<number | undefined>;
+  activePane(): Promise<string | undefined>;
+  workspace(): Promise<ProbeTab[]>;
+  processName(pane?: string): Promise<string | undefined>;
+  problems(): Promise<string[]>;
+  fontSize(): Promise<number>;
   type(text: string): Promise<void>;
+  press(keys: string): Promise<void>;
+  /** Waits until the active pane has a running shell. */
+  ready(): Promise<void>;
 }
 
 function wrap(page: Page): GlaceonWindow {
-  return {
+  const self: GlaceonWindow = {
     page,
-    terminalText: () =>
-      page.evaluate(() => (window as unknown as ProbeWindow).__glaceonE2E.terminalText()),
-    sessionPid: () =>
-      page.evaluate(() => (window as unknown as ProbeWindow).__glaceonE2E.sessionPid()),
+    terminalText: (pane) => page.evaluate((id) => window.__glaceonE2E.terminalText(id), pane),
+    sessionPid: (pane) => page.evaluate((id) => window.__glaceonE2E.sessionPid(id), pane),
+    activePane: () => page.evaluate(() => window.__glaceonE2E.activePane()),
+    workspace: () => page.evaluate(() => window.__glaceonE2E.workspace()),
+    processName: async (pane) => {
+      const id = pane ?? (await self.activePane());
+      if (id === undefined) return undefined;
+      return page.evaluate((target) => window.__glaceonE2E.sessionInfo(target)?.process, id);
+    },
+    problems: () => page.evaluate(() => window.__glaceonE2E.problems()),
+    fontSize: () => page.evaluate(() => window.__glaceonE2E.fontSize()),
     type: (text) => page.keyboard.type(text),
+    press: (keys) => page.keyboard.press(keys),
+    ready: async () => {
+      await page.waitForFunction(() => window.__glaceonE2E.sessionPid() !== undefined);
+    },
   };
+  return self;
 }
 
 /**
  * Dev builds run from `out/`. Setting GLACEON_E2E_EXECUTABLE runs the packaged app instead,
  * with the bare environment Finder gives an app (no LANG, minimal PATH).
  */
-function launchOptions(home: string): Parameters<typeof electron.launch>[0] {
+function launchOptions(home: string, configDir: string): Parameters<typeof electron.launch>[0] {
   const executablePath = process.env['GLACEON_E2E_EXECUTABLE'];
-  const shared = { GLACEON_E2E: '1', HOME: home, SHELL: '/bin/sh', ENV: '' };
+  const shared = {
+    GLACEON_E2E: '1',
+    GLACEON_CONFIG_DIR: configDir,
+    HOME: home,
+    SHELL: '/bin/sh',
+    ENV: '',
+  };
   if (executablePath === undefined) {
     return { args: [appDirectory], env: { ...process.env, ...shared } };
   }
@@ -57,11 +100,28 @@ function launchOptions(home: string): Parameters<typeof electron.launch>[0] {
   };
 }
 
-export const test = base.extend<{ app: ElectronApplication; window: GlaceonWindow }>({
+export interface Fixtures {
+  configDir: string;
+  /** Settings written to config.json before the app starts. */
+  initialSettings: string | undefined;
+  app: ElectronApplication;
+  window: GlaceonWindow;
+}
+
+export const test = base.extend<Fixtures>({
+  initialSettings: [undefined, { option: true }],
   // eslint-disable-next-line no-empty-pattern -- Playwright requires a destructuring pattern
-  app: async ({}, use) => {
+  configDir: async ({}, use) => {
+    const dir = await mkdtemp(join(tmpdir(), 'glaceon-e2e-config-'));
+    await use(dir);
+    await rm(dir, { recursive: true, force: true });
+  },
+  app: async ({ configDir, initialSettings }, use) => {
     const home = await mkdtemp(join(tmpdir(), 'glaceon-e2e-'));
-    const app = await electron.launch(launchOptions(home));
+    if (initialSettings !== undefined) {
+      await writeFile(join(configDir, 'config.json'), initialSettings);
+    }
+    const app = await electron.launch(launchOptions(home, configDir));
     await use(app);
     await app.close();
     await rm(home, { recursive: true, force: true });
@@ -69,7 +129,9 @@ export const test = base.extend<{ app: ElectronApplication; window: GlaceonWindo
   window: async ({ app }, use) => {
     const page = await app.firstWindow();
     await page.waitForFunction(() => '__glaceonE2E' in window);
-    await use(wrap(page));
+    const window = wrap(page);
+    await window.ready();
+    await use(window);
   },
 });
 

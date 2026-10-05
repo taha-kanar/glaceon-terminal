@@ -18,6 +18,16 @@ test('renderer is sandboxed and isolated', async ({ window }) => {
   expect(exposed).toEqual({
     require: 'undefined',
     process: 'undefined',
-    bridgeKeys: ['connectPty', 'e2e'],
+    bridgeKeys: [
+      'closeWindow',
+      'connectPty',
+      'e2e',
+      'getSettings',
+      'newWindow',
+      'onCloseRequested',
+      'onRunCommand',
+      'onSettingsChanged',
+      'openSettingsFile',
+    ],
   });
 });

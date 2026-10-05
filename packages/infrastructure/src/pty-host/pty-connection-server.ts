@@ -1,4 +1,9 @@
-import type { HostConnection, PtySessionHost, SessionOutput } from '@glaceon/application';
+import type {
+  ForegroundProcess,
+  HostConnection,
+  PtySessionHost,
+  SessionOutput,
+} from '@glaceon/application';
 import {
   decodePtyClientMessage,
   type PtyClientMessage,
@@ -28,6 +33,10 @@ class PortSessionOutput implements SessionOutput {
   exit(sessionId: SessionId, exit: PtyExit): void {
     this.#port.postMessage({ t: 'exit', sid: sessionId, ...exit } satisfies PtyHostMessage);
   }
+
+  process(sessionId: SessionId, process: ForegroundProcess): void {
+    this.#port.postMessage({ t: 'process', sid: sessionId, ...process } satisfies PtyHostMessage);
+  }
 }
 
 function dispatch(
@@ -44,7 +53,7 @@ function dispatch(
         ...(message.cwd === undefined ? {} : { cwd: message.cwd }),
       });
       const reply: PtyHostMessage = result.ok
-        ? { t: 'spawned', reqId: message.reqId, pid: result.value.pid }
+        ? { t: 'spawned', reqId: message.reqId, ...result.value }
         : { t: 'spawnFailed', reqId: message.reqId, message: result.error.message };
       port.postMessage(reply);
       return;
@@ -57,6 +66,18 @@ function dispatch(
       return;
     case 'kill':
       connection.kill(sessionId);
+      return;
+    case 'ack':
+      connection.acknowledge(sessionId, message.bytes);
+      return;
+    case 'cwd':
+      void connection.cwd(sessionId).then((cwd) => {
+        const reply: PtyHostMessage =
+          cwd === undefined
+            ? { t: 'cwd', reqId: message.reqId }
+            : { t: 'cwd', reqId: message.reqId, cwd };
+        port.postMessage(reply);
+      });
       return;
   }
 }

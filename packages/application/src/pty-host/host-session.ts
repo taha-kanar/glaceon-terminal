@@ -1,0 +1,107 @@
+import type { Disposable, PtyExit, SessionId, TerminalSize } from '@glaceon/domain';
+import type { Scheduler } from '../ports/scheduler';
+import { FlowController, type FlowWatermarks } from './flow-controller';
+import { OutputBatcher, type BatchLimits } from './output-batcher';
+import type { ProcessInspector } from './process-inspector';
+import type { PtyProcess } from './pty-process';
+import type { SessionOutput } from './session-output';
+
+export interface FlowSettings {
+  readonly batch?: BatchLimits;
+  readonly watermarks?: FlowWatermarks;
+}
+
+export interface HostSessionDeps {
+  readonly scheduler: Scheduler;
+  readonly output: SessionOutput;
+  readonly inspector: ProcessInspector;
+  /** Name to compare against when the shell's own process name cannot be read. */
+  readonly shellName: string;
+  readonly flow?: FlowSettings;
+  /** Called once the process has exited and its last output was delivered. */
+  readonly onExit: (exit: PtyExit) => void;
+}
+
+/** A pty owned by a connection: batched output with back-pressure and foreground tracking. */
+export class HostSession {
+  readonly #id: SessionId;
+  readonly #process: PtyProcess;
+  readonly #batcher: OutputBatcher;
+  readonly #flow: FlowController;
+  readonly #subscriptions: Disposable[];
+  readonly #deps: HostSessionDeps;
+  #foreground: string;
+  #shellName: Promise<string> | undefined;
+  #exited = false;
+
+  constructor(id: SessionId, process: PtyProcess, deps: HostSessionDeps) {
+    this.#id = id;
+    this.#process = process;
+    this.#deps = deps;
+    this.#foreground = process.foregroundProcess;
+    this.#flow = new FlowController(process, deps.flow?.watermarks);
+    this.#batcher = new OutputBatcher(
+      deps.scheduler,
+      (chunk) => {
+        this.#flow.sent(chunk.byteLength);
+        deps.output.data(id, chunk);
+      },
+      deps.flow?.batch,
+    );
+    this.#subscriptions = [
+      process.onData((chunk) => this.#batcher.push(chunk)),
+      process.onExit((exit) => this.#exit(exit)),
+    ];
+  }
+
+  get pid(): number {
+    return this.#process.pid;
+  }
+
+  write(data: string): void {
+    this.#process.write(data);
+  }
+
+  resize(size: TerminalSize): void {
+    this.#process.resize(size);
+  }
+
+  kill(): void {
+    this.#process.kill();
+  }
+
+  acknowledge(bytes: number): void {
+    this.#flow.acknowledged(bytes);
+  }
+
+  /**
+   * Reports the foreground process when it changed since the last check. It is busy unless it
+   * is the shell itself (compared by the shell process's real name: `/bin/sh` runs `bash`).
+   */
+  checkForeground(): void {
+    const name = this.#process.foregroundProcess;
+    if (name === this.#foreground || name === '') return;
+    this.#foreground = name;
+    void this.#resolveShellName().then((shell) => {
+      if (this.#exited || this.#foreground !== name) return;
+      this.#deps.output.process(this.#id, { name, busy: name !== shell });
+    });
+  }
+
+  #resolveShellName(): Promise<string> {
+    this.#shellName ??= this.#deps.inspector
+      .nameOf(this.#process.pid)
+      .catch(() => undefined)
+      .then((name) => name ?? this.#deps.shellName);
+    return this.#shellName;
+  }
+
+  #exit(exit: PtyExit): void {
+    this.#exited = true;
+    for (const subscription of this.#subscriptions) subscription.dispose();
+    this.#batcher.flush();
+    this.#batcher.dispose();
+    this.#deps.output.exit(this.#id, exit);
+    this.#deps.onExit(exit);
+  }
+}

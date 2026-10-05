@@ -2,7 +2,12 @@ import { homedir } from 'node:os';
 import { buildShellEnvironment, defaultShellProfile, PtySessionHost } from '@glaceon/application';
 import { decodePtyHostControlMessage } from '@glaceon/contracts';
 import type { Disposable } from '@glaceon/domain';
-import { NodePtyProcessFactory, servePtyConnection } from '@glaceon/infrastructure/pty-host';
+import {
+  MacProcessInspector,
+  NodePtyProcessFactory,
+  servePtyConnection,
+  TimerScheduler,
+} from '@glaceon/infrastructure/pty-host';
 
 export interface PtyHostCompositionRoot {
   start(): void;
@@ -18,6 +23,8 @@ export function createPtyHostCompositionRoot(): PtyHostCompositionRoot {
   const host = new PtySessionHost({
     processes: new NodePtyProcessFactory(),
     shell: defaultShellProfile({ env: process.env, shellEnv, homeDirectory: homedir() }),
+    scheduler: new TimerScheduler(),
+    inspector: new MacProcessInspector(),
   });
   const connections = new Map<string, Disposable>();
 

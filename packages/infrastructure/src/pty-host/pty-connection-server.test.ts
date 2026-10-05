@@ -1,5 +1,9 @@
 import { PtySessionHost } from '@glaceon/application';
-import { FakePtyProcessFactory } from '@glaceon/application/testing';
+import {
+  FakeProcessInspector,
+  FakePtyProcessFactory,
+  ManualScheduler,
+} from '@glaceon/application/testing';
 import type { PtyHostMessage } from '@glaceon/contracts';
 import { describe, expect, it } from 'vitest';
 import type { MainMessagePort } from './main-message-port';
@@ -44,13 +48,17 @@ class FakeMainPort implements MainMessagePort {
 
 function setup() {
   const processes = new FakePtyProcessFactory();
+  const inspector = new FakeProcessInspector();
+  const scheduler = new ManualScheduler();
   const host = new PtySessionHost({
     processes,
     shell: { file: '/bin/zsh', args: ['-l'], cwd: '/home', env: {} },
+    scheduler,
+    inspector,
   });
   const port = new FakeMainPort();
   const connection = servePtyConnection(port, host);
-  return { processes, host, port, connection };
+  return { processes, host, port, connection, inspector, scheduler };
 }
 
 describe('servePtyConnection', () => {
@@ -60,7 +68,7 @@ describe('servePtyConnection', () => {
     port.receive({ t: 'spawn', reqId: 7, sid: 'a', cols: 0, rows: 30.5 });
 
     expect(port.started).toBe(true);
-    expect(port.sent).toEqual([{ t: 'spawned', reqId: 7, pid: 1000 }]);
+    expect(port.sent).toEqual([{ t: 'spawned', reqId: 7, pid: 1000, shell: 'zsh' }]);
     expect(processes.processes[0]?.options.size).toEqual({ cols: 1, rows: 30 });
   });
 
@@ -90,6 +98,27 @@ describe('servePtyConnection', () => {
       { t: 'data', sid: 'a', chunk: new Uint8Array([104, 105]) },
       { t: 'exit', sid: 'a', exitCode: 0 },
     ]);
+  });
+
+  it('answers cwd requests, applies acks and reports foreground changes', async () => {
+    const { port, processes, inspector, scheduler } = setup();
+    port.receive({ t: 'spawn', reqId: 1, sid: 'a', cols: 80, rows: 24 });
+    inspector.cwds.set(1000, '/src');
+
+    port.receive({ t: 'cwd', reqId: 2, sid: 'a' });
+    port.receive({ t: 'cwd', reqId: 3, sid: 'zz' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Replies may arrive in any order; the client matches them by request id.
+    expect(port.sent.slice(1)).toHaveLength(2);
+    expect(port.sent).toContainEqual({ t: 'cwd', reqId: 2, cwd: '/src' });
+    expect(port.sent).toContainEqual({ t: 'cwd', reqId: 3 });
+
+    processes.processes[0]!.foregroundProcess = 'htop';
+    scheduler.advance(1000);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(port.sent.at(-1)).toEqual({ t: 'process', sid: 'a', name: 'htop', busy: true });
+
+    port.receive({ t: 'ack', sid: 'a', bytes: 10 });
   });
 
   it('drops malformed messages', () => {

@@ -22,6 +22,23 @@ class NodePtyProcess implements PtyProcess {
     return this.#pty.pid;
   }
 
+  get foregroundProcess(): string {
+    if (this.#exited) return '';
+    try {
+      return this.#pty.process;
+    } catch {
+      return '';
+    }
+  }
+
+  pause(): void {
+    if (!this.#exited) this.#pty.pause();
+  }
+
+  resume(): void {
+    if (!this.#exited) this.#pty.resume();
+  }
+
   write(data: string): void {
     if (!this.#exited) this.#pty.write(data);
   }

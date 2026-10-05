@@ -1,6 +1,23 @@
-/** invoke() channels handled by the main process. */
+/** invoke() channels handled by the main process (renderer → main, with a reply). */
 export const MainInvokeChannel = {
   ptyConnect: 'pty:connect',
+  settingsGet: 'settings:get',
+} as const;
+
+/** send() channels handled by the main process (renderer → main, fire and forget). */
+export const MainSendChannel = {
+  windowNew: 'window:new',
+  windowClose: 'window:close',
+  settingsOpenFile: 'settings:open-file',
+} as const;
+
+/** Channels main pushes to renderers. */
+export const RendererChannel = {
+  settingsChanged: 'settings:changed',
+  /** A menu item (or main) asks the renderer to run a command. */
+  runCommand: 'command:run',
+  /** The user clicked the window's close button; the renderer decides (it may confirm first). */
+  closeRequested: 'window:close-requested',
 } as const;
 
 /** Channel on which main delivers a window's pty MessagePort to its preload. */

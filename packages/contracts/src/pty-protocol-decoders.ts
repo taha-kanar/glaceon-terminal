@@ -21,6 +21,10 @@ export function decodePtyClientMessage(value: unknown): PtyClientMessage | undef
       return typeof message.data === 'string' ? message : undefined;
     case 'resize':
       return isFiniteNumber(message.cols) && isFiniteNumber(message.rows) ? message : undefined;
+    case 'ack':
+      return isFiniteNumber(message.bytes) && message.bytes >= 0 ? message : undefined;
+    case 'cwd':
+      return isFiniteNumber(message.reqId) ? message : undefined;
     case 'kill':
       return message;
     default:
@@ -28,16 +32,31 @@ export function decodePtyClientMessage(value: unknown): PtyClientMessage | undef
   }
 }
 
-export function decodePtyHostMessage(value: unknown): PtyHostMessage | undefined {
-  if (!isRecord(value)) return undefined;
-  const message = value as PtyHostMessage;
+type PtyHostReply = Extract<PtyHostMessage, { readonly t: 'spawned' | 'spawnFailed' | 'cwd' }>;
+
+function decodeReply(message: PtyHostReply): PtyHostMessage | undefined {
   switch (message.t) {
     case 'spawned':
-      return isFiniteNumber(message.reqId) && isFiniteNumber(message.pid) ? message : undefined;
+      return isFiniteNumber(message.reqId) &&
+        isFiniteNumber(message.pid) &&
+        typeof message.shell === 'string'
+        ? message
+        : undefined;
     case 'spawnFailed':
       return isFiniteNumber(message.reqId) && typeof message.message === 'string'
         ? message
         : undefined;
+    case 'cwd':
+      return isFiniteNumber(message.reqId) && isOptional(message.cwd, isNonEmptyString)
+        ? message
+        : undefined;
+  }
+}
+
+export function decodePtyHostMessage(value: unknown): PtyHostMessage | undefined {
+  if (!isRecord(value)) return undefined;
+  const message = value as PtyHostMessage;
+  switch (message.t) {
     case 'data':
       return isNonEmptyString(message.sid) && message.chunk instanceof Uint8Array
         ? message
@@ -48,6 +67,16 @@ export function decodePtyHostMessage(value: unknown): PtyHostMessage | undefined
         isOptional(message.signal, isFiniteNumber)
         ? message
         : undefined;
+    case 'process':
+      return isNonEmptyString(message.sid) &&
+        typeof message.name === 'string' &&
+        typeof message.busy === 'boolean'
+        ? message
+        : undefined;
+    case 'spawned':
+    case 'spawnFailed':
+    case 'cwd':
+      return decodeReply(message);
     default:
       return undefined;
   }

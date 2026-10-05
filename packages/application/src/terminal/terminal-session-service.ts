@@ -1,12 +1,14 @@
 import {
   asSessionId,
   DisposableStore,
+  Emitter,
   normalizeTerminalSize,
   ok,
+  type PtyExit,
   type Result,
 } from '@glaceon/domain';
 import type { IdGenerator } from '../ports/id-generator';
-import type { PtyError, PtyPort } from './pty-port';
+import type { ForegroundProcess, PtyError, PtyPort } from './pty-port';
 import { TerminalSession } from './terminal-session';
 import type { TerminalView } from './terminal-view';
 
@@ -37,10 +39,22 @@ export class TerminalSessionService {
     const { pty, ids } = this.#deps;
     const sessionId = asSessionId(ids.next());
     const wiring = new DisposableStore();
+    const exited = new Emitter<PtyExit>();
+    const process = new Emitter<ForegroundProcess>();
 
     // Listen before spawning so the first bytes of output are never missed.
-    wiring.add(pty.onData(sessionId, (chunk) => view.write(chunk)));
-    wiring.add(pty.onExit(sessionId, () => wiring.dispose()));
+    wiring.add(
+      pty.onData(sessionId, (chunk) => {
+        view.write(chunk, () => pty.acknowledge(sessionId, chunk.byteLength));
+      }),
+    );
+    wiring.add(pty.onProcess(sessionId, (state) => process.emit(state)));
+    wiring.add(
+      pty.onExit(sessionId, (exit) => {
+        wiring.dispose();
+        exited.emit(exit);
+      }),
+    );
 
     const spawned = await pty.spawn({
       sessionId,
@@ -54,7 +68,8 @@ export class TerminalSessionService {
 
     wiring.add(view.onInput((data) => pty.write(sessionId, data)));
     wiring.add(view.onResize((size) => pty.resize(sessionId, normalizeTerminalSize(size))));
+    wiring.add({ dispose: () => process.clear() });
 
-    return ok(new TerminalSession(sessionId, spawned.value.pid, { pty, wiring }));
+    return ok(new TerminalSession(sessionId, spawned.value, { pty, wiring, exited, process }));
   }
 }

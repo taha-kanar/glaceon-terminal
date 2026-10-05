@@ -1,0 +1,33 @@
+/** Every built-in command. Keybindings, menus and the palette refer to commands by these ids. */
+export const CommandIds = {
+  tabNew: 'tab.new',
+  tabClose: 'tab.close',
+  tabNext: 'tab.next',
+  tabPrevious: 'tab.previous',
+  tabSelect: 'tab.select',
+  windowNew: 'window.new',
+  windowClose: 'window.close',
+  paneSplitRight: 'pane.splitRight',
+  paneSplitDown: 'pane.splitDown',
+  paneClose: 'pane.close',
+  paneFocusLeft: 'pane.focusLeft',
+  paneFocusRight: 'pane.focusRight',
+  paneFocusUp: 'pane.focusUp',
+  paneFocusDown: 'pane.focusDown',
+  paneFocusNext: 'pane.focusNext',
+  paneFocusPrevious: 'pane.focusPrevious',
+  paneToggleZoom: 'pane.toggleZoom',
+  paneEqualize: 'pane.equalize',
+  paneResizeLeft: 'pane.resizeLeft',
+  paneResizeRight: 'pane.resizeRight',
+  paneResizeUp: 'pane.resizeUp',
+  paneResizeDown: 'pane.resizeDown',
+  terminalClear: 'terminal.clear',
+  fontIncrease: 'view.fontIncrease',
+  fontDecrease: 'view.fontDecrease',
+  fontReset: 'view.fontReset',
+  settingsOpen: 'settings.open',
+  settingsOpenFile: 'settings.openFile',
+} as const;
+
+export type BuiltinCommandId = (typeof CommandIds)[keyof typeof CommandIds];

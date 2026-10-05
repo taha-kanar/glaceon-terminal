@@ -7,17 +7,26 @@ import {
   type SessionId,
   type TerminalSize,
 } from '@glaceon/domain';
-import type { PtyError, PtyPort, SpawnedSession, SpawnRequest } from '../terminal/pty-port';
+import type {
+  ForegroundProcess,
+  PtyError,
+  PtyPort,
+  SpawnedSession,
+  SpawnRequest,
+} from '../terminal/pty-port';
 
 export class FakePtyPort implements PtyPort {
   readonly spawned: SpawnRequest[] = [];
   readonly writes: { sessionId: SessionId; data: string }[] = [];
   readonly resizes: { sessionId: SessionId; size: TerminalSize }[] = [];
   readonly killed: SessionId[] = [];
-  nextSpawnResult: Result<SpawnedSession, PtyError> = ok({ pid: 4242 });
+  readonly acknowledged: { sessionId: SessionId; bytes: number }[] = [];
+  cwdResult: string | undefined = '/work';
+  nextSpawnResult: Result<SpawnedSession, PtyError> = ok({ pid: 4242, shell: 'zsh' });
 
   readonly #data = new KeyedEmitter<SessionId, Uint8Array>();
   readonly #exit = new KeyedEmitter<SessionId, PtyExit>();
+  readonly #process = new KeyedEmitter<SessionId, ForegroundProcess>();
 
   spawn(request: SpawnRequest): Promise<Result<SpawnedSession, PtyError>> {
     this.spawned.push(request);
@@ -34,6 +43,22 @@ export class FakePtyPort implements PtyPort {
 
   kill(sessionId: SessionId): void {
     this.killed.push(sessionId);
+  }
+
+  acknowledge(sessionId: SessionId, bytes: number): void {
+    this.acknowledged.push({ sessionId, bytes });
+  }
+
+  cwd(): Promise<string | undefined> {
+    return Promise.resolve(this.cwdResult);
+  }
+
+  onProcess(sessionId: SessionId, listener: (process: ForegroundProcess) => void): Disposable {
+    return this.#process.on(sessionId, listener);
+  }
+
+  emitProcess(sessionId: SessionId, name: string, busy = true): void {
+    this.#process.emit(sessionId, { name, busy });
   }
 
   onData(sessionId: SessionId, listener: (chunk: Uint8Array) => void): Disposable {
@@ -53,6 +78,6 @@ export class FakePtyPort implements PtyPort {
   }
 
   listenerCount(sessionId: SessionId): number {
-    return this.#data.size(sessionId) + this.#exit.size(sessionId);
+    return this.#data.size(sessionId) + this.#exit.size(sessionId) + this.#process.size(sessionId);
   }
 }

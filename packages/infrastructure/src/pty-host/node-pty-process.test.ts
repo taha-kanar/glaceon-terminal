@@ -53,3 +53,18 @@ describe('NodePtyProcessFactory (real pty)', () => {
     expect(exit.exitCode).not.toBe(0);
   });
 });
+
+describe('NodePtyProcess foreground and flow control', () => {
+  it('names the foreground process and can pause and resume output', async () => {
+    const ptyProcess = factory.spawn({ ...base, file: '/bin/sh', args: ['-c', 'exec sleep 30'] });
+    await expect.poll(() => ptyProcess.foregroundProcess).toBe('sleep');
+    ptyProcess.pause();
+    ptyProcess.resume();
+    const exited = new Promise<PtyExit>((resolve) => ptyProcess.onExit(resolve));
+    ptyProcess.kill();
+    await exited;
+    expect(ptyProcess.foregroundProcess).toBe('');
+    ptyProcess.pause();
+    ptyProcess.resume();
+  });
+});

@@ -11,9 +11,13 @@ export interface PtySpawnOptions {
 /** One running pseudo terminal with its child process. */
 export interface PtyProcess {
   readonly pid: number;
+  /** Name of the foreground process on the terminal, e.g. `vim`. */
+  readonly foregroundProcess: string;
   write(data: string): void;
   resize(size: TerminalSize): void;
   kill(): void;
+  pause(): void;
+  resume(): void;
   onData(listener: (chunk: Uint8Array) => void): Disposable;
   onExit(listener: (exit: PtyExit) => void): Disposable;
 }

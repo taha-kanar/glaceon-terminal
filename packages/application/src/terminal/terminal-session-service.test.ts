@@ -82,3 +82,31 @@ describe('TerminalSessionService.open', () => {
     expect(pty.listenerCount(result.value.id)).toBe(0);
   });
 });
+
+describe('TerminalSession events', () => {
+  it('acknowledges rendered output and reports process changes and exits', async () => {
+    const { pty, view, service } = setup();
+    const result = await service.open(view);
+    if (!result.ok) throw new Error('expected session');
+    const session = result.value;
+    const names: { name: string; busy: boolean }[] = [];
+    const exits: number[] = [];
+    session.onProcess((state) => names.push(state));
+    session.onExit((exit) => exits.push(exit.exitCode));
+
+    view.autoAcknowledge = false;
+    pty.emitData(session.id, 'abc');
+    expect(pty.acknowledged).toEqual([]);
+    view.pendingWrites.forEach((done) => done());
+    expect(pty.acknowledged).toEqual([{ sessionId: session.id, bytes: 3 }]);
+
+    pty.emitProcess(session.id, 'vim');
+    pty.emitExit(session.id, { exitCode: 2 });
+    expect(names).toEqual([{ name: 'vim', busy: true }]);
+    expect(exits).toEqual([2]);
+    expect(session.spawned).toEqual({ pid: 4242, shell: 'zsh' });
+    expect(await session.cwd()).toBe('/work');
+    session.close();
+    expect(await session.cwd()).toBeUndefined();
+  });
+});

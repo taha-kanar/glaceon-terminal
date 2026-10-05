@@ -1,2 +1,3 @@
 export { App, type AppProps } from './app/App';
-export { TerminalSlot, type TerminalMount, type TerminalSlotProps } from './terminal/TerminalSlot';
+export type { AppActions, AppModel, TerminalSlotBinder } from './app/app-model';
+export { useStore } from './hooks/use-store';
