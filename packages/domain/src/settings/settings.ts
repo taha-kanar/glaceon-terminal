@@ -4,6 +4,9 @@ import type { Theme } from '../theme/theme';
 
 export type CursorStyle = 'block' | 'bar' | 'underline';
 
+/** How a background image fills the window. */
+export type BackgroundImageFit = 'cover' | 'contain' | 'fill';
+
 /** What happens to a pane whose shell exits: always close, close on exit code 0, or keep it. */
 export type CloseOnExit = 'always' | 'clean' | 'never';
 
@@ -13,8 +16,17 @@ export interface Settings {
   readonly lineHeight: number;
   readonly letterSpacing: number;
   readonly theme: string;
-  /** Opacity of the terminal background over the window's vibrancy, 0..1. */
+  /** Opacity of the theme's background color, 0..1: below 1 the desktop shows through. */
   readonly backgroundOpacity: number;
+  /** Frosted glass: blur what is behind the window instead of showing it sharp. */
+  readonly backgroundBlur: boolean;
+  /** Solid color painted behind the theme background (#rrggbb), or '' for none. */
+  readonly backgroundColor: string;
+  /** Path of an image painted behind the terminal, or '' for none. `~` is the home folder. */
+  readonly backgroundImage: string;
+  readonly backgroundImageFit: BackgroundImageFit;
+  /** Opacity of the background image, 0.05..1. */
+  readonly backgroundImageOpacity: number;
   readonly cursorStyle: CursorStyle;
   readonly cursorBlink: boolean;
   readonly scrollback: number;
@@ -44,6 +56,11 @@ export const DEFAULT_SETTINGS: Settings = {
   letterSpacing: 0,
   theme: DEFAULT_THEME_ID,
   backgroundOpacity: 0.72,
+  backgroundBlur: false,
+  backgroundColor: '',
+  backgroundImage: '',
+  backgroundImageFit: 'cover',
+  backgroundImageOpacity: 1,
   cursorStyle: 'block',
   cursorBlink: true,
   scrollback: 10_000,

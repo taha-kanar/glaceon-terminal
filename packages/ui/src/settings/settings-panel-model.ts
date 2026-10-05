@@ -37,6 +37,8 @@ export interface SettingsPanelModel {
   readonly themes: ThemeEditorModel;
   readonly keybindings: KeybindingsModel;
   readonly openSettingsFile: () => void;
+  /** Asks for a background image; resolves with its path, or undefined when cancelled. */
+  readonly chooseBackgroundImage: () => Promise<string | undefined>;
   /** Whether the quake shortcut is registered (undefined until main reports it). */
   readonly quakeStatus: ReadableStore<QuakeStatus | undefined>;
 }

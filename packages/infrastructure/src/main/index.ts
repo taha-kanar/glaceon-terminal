@@ -14,3 +14,9 @@ export { TabTransferCoordinator, type TransferWindow } from './tab-transfer-coor
 export { decodeTabTransferRequest } from './tab-transfer-schema';
 export { JsoncSnippetSource, parseSnippetsText } from './jsonc-snippet-source';
 export { MemoryClipboard, SystemClipboard } from './clipboards';
+export {
+  BACKGROUND_IMAGE_EXTENSIONS,
+  registerBackgroundImageScheme,
+  resolveBackgroundImage,
+  serveBackgroundImage,
+} from './background-image';

@@ -28,6 +28,7 @@ import {
   type RendererSource,
 } from '@glaceon/infrastructure/main';
 import { app, BrowserWindow, ipcMain, Menu, shell, type IpcMainEvent } from 'electron';
+import { installAboutPanel, installWindowAppearance, prepareWindowAppearance } from './appearance';
 import { createQuake } from './quake';
 import { createTools } from './tools';
 
@@ -43,18 +44,6 @@ function rendererSource(): RendererSource {
     : { url: devServerUrl };
 }
 
-function installAboutPanel(): void {
-  app.setAboutPanelOptions({
-    applicationName: app.name,
-    applicationVersion: app.getVersion(),
-    version: `Electron ${process.versions.electron}`,
-    copyright: '© 2026 Taha Kanar',
-    credits: 'Built with xterm.js, node-pty, React and Electron.',
-  });
-  // Packaged builds take the icon from the bundle; dev runs would show Electron's.
-  if (!app.isPackaged) app.dock?.setIcon(join(import.meta.dirname, '../../build/icon.png'));
-}
-
 function configDirectory(): string {
   return process.env['GLACEON_CONFIG_DIR'] ?? join(homedir(), '.config', 'glaceon');
 }
@@ -63,6 +52,7 @@ function configDirectory(): string {
 export function createMainCompositionRoot(): MainCompositionRoot {
   const e2e = process.env['GLACEON_E2E'] === '1' || process.argv.includes(E2E_SWITCH);
   const hidden = e2e && process.env['GLACEON_E2E_HIDDEN'] === '1';
+  prepareWindowAppearance();
   const windows = new Map<number, TerminalWindow>();
   const settingsSource = new JsoncSettingsSource({ path: join(configDirectory(), 'config.json') });
   const settings = new SettingsService(settingsSource);
@@ -116,6 +106,7 @@ export function createMainCompositionRoot(): MainCompositionRoot {
       e2e,
       kind,
       hidden,
+      blur: settings.state.get().settings.backgroundBlur,
       // A torn-off tab's window appears under the pointer, title bar first.
       ...(at === undefined ? {} : { position: { x: at.x - 160, y: at.y - 16 } }),
     });
@@ -185,6 +176,7 @@ export function createMainCompositionRoot(): MainCompositionRoot {
       ptyHost.connect(event.sender, String(window.id));
     });
     ipcMain.handle(MainInvokeChannel.settingsGet, () => snapshot());
+
     ipcMain.handle(
       MainInvokeChannel.linkOpen,
       async (_event, payload: unknown): Promise<OperationResult> => {
@@ -245,6 +237,7 @@ export function createMainCompositionRoot(): MainCompositionRoot {
         installMenu();
         broadcastSettings();
       });
+      installWindowAppearance({ settings: settings.state, windows: () => windows.values() });
       installMenu();
       registerIpc();
       openWindow();

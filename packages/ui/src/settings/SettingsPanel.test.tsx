@@ -40,6 +40,7 @@ function model() {
       setCapture,
     },
     openSettingsFile: vi.fn(),
+    chooseBackgroundImage: vi.fn(() => Promise.resolve(undefined)),
     quakeStatus,
   };
   return { value, update, setCapture, settings, quakeStatus };

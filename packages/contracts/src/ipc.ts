@@ -10,6 +10,8 @@ export const MainInvokeChannel = {
   windowReady: 'window:ready',
   snippetsGet: 'snippets:get',
   clipboardRingGet: 'clipboard:ring',
+  /** Shows an open dialog for a background image; replies with its path or undefined. */
+  backgroundChooseImage: 'background:choose-image',
 } as const;
 
 /** send() channels handled by the main process (renderer → main, fire and forget). */

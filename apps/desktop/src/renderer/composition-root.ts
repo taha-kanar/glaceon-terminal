@@ -54,7 +54,7 @@ import {
 import { createE2EProbe } from './e2e-probe';
 import { createRendererTools } from './tools';
 import { installKeyboardHandler } from './keyboard';
-import { applyTheme } from './theme-applier';
+import { applyBackground, applyTheme } from './theme-applier';
 import { viewOptions } from './view-options';
 
 export interface RendererCompositionRoot {
@@ -123,6 +123,7 @@ export async function createRendererCompositionRoot(
     const current = appearance.get();
     views.setOptions(viewOptions(current.settings, current.theme));
     applyTheme(target.document.documentElement, current.theme, current.settings.backgroundOpacity);
+    applyBackground(target.document.documentElement, current.settings);
   };
   applyAppearance();
   appearance.subscribe(applyAppearance);
@@ -267,6 +268,7 @@ export async function createRendererCompositionRoot(
       registry,
       context,
       openSettingsFile: () => windowPort.openSettingsFile(),
+      chooseBackgroundImage: () => bridge.chooseBackgroundImage(),
       quakeStatus: computed([settingsState], () => settingsState.get().quake),
     }),
     search: searchModelFor(search),

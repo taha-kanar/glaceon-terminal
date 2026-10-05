@@ -14,10 +14,12 @@ export interface TerminalWindowOptions {
   readonly position?: { readonly x: number; readonly y: number };
   /** The quake window is a borderless panel that floats over every Space and full-screen app. */
   readonly kind?: 'normal' | 'quake';
+  /** Blur what is behind the window (frosted glass) instead of showing it sharp. */
+  readonly blur?: boolean;
 }
 
 /**
- * A vibrant terminal window with a sandboxed, isolated renderer. Closing it from the title bar
+ * A transparent terminal window (optionally frosted) with a sandboxed, isolated renderer. Closing it from the title bar
  * asks the renderer first (it may confirm running processes); `forceClose` skips that.
  */
 export class TerminalWindow {
@@ -50,7 +52,9 @@ export class TerminalWindow {
       title: 'Glaceon Terminal',
       titleBarStyle: 'hiddenInset',
       trafficLightPosition: { x: 14, y: 12 },
-      vibrancy: 'under-window',
+      // Truly see-through: the renderer paints the tinted background at the chosen opacity.
+      transparent: true,
+      ...(options.blur === true ? { vibrancy: 'under-window' as const } : {}),
       visualEffectState: 'active',
       backgroundColor: '#00000000',
       webPreferences: {
@@ -104,6 +108,10 @@ export class TerminalWindow {
 
   get id(): number {
     return this.browserWindow.webContents.id;
+  }
+
+  setBlur(blur: boolean): void {
+    this.browserWindow.setVibrancy(blur ? 'under-window' : null);
   }
 
   contains(point: { readonly x: number; readonly y: number }): boolean {

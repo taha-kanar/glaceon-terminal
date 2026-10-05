@@ -19,6 +19,7 @@ test('renderer is sandboxed and isolated', async ({ window }) => {
     require: 'undefined',
     process: 'undefined',
     bridgeKeys: [
+      'chooseBackgroundImage',
       'closeWindow',
       'connectPty',
       'e2e',

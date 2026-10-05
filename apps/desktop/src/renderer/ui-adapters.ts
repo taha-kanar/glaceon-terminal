@@ -64,6 +64,7 @@ export function settingsPanelModelFor(parts: {
   readonly registry: CommandRegistry;
   readonly context: ContextKeys;
   readonly openSettingsFile: () => void;
+  readonly chooseBackgroundImage: () => Promise<string | undefined>;
   readonly quakeStatus: AppModel['settingsPanel']['quakeStatus'];
 }): AppModel['settingsPanel'] {
   const { themeEditor, keybindings, registry, context, writer } = parts;
@@ -85,6 +86,7 @@ export function settingsPanelModelFor(parts: {
       setCapture: (capturing) => context.set(INPUT_CAPTURE_CONTEXT, capturing),
     },
     openSettingsFile: parts.openSettingsFile,
+    chooseBackgroundImage: parts.chooseBackgroundImage,
     quakeStatus: parts.quakeStatus,
   };
 }

@@ -9,6 +9,14 @@ export const E2E_SWITCH = '--glaceon-e2e';
 /** Command line switch of the quake (drop-down) window's renderer. */
 export const QUAKE_SWITCH = '--glaceon-quake';
 
+/** Scheme on which main serves the configured background image (and nothing else). */
+export const BACKGROUND_IMAGE_SCHEME = 'glaceon-bg';
+
+/** URL of the background image; the path is only there so a new image is not served from cache. */
+export function backgroundImageUrl(path: string): string {
+  return `${BACKGROUND_IMAGE_SCHEME}://image/?v=${encodeURIComponent(path)}`;
+}
+
 /** Settings as main sends them: always usable values plus problems with the file, if any. */
 export interface SettingsSnapshot {
   readonly settings: Settings;
@@ -123,6 +131,8 @@ export interface GlaceonBridge {
   getSnippets(): Promise<SnippetsSnapshot>;
   onSnippetsChanged(listener: (snapshot: SnippetsSnapshot) => void): Unsubscribe;
   openSnippetsFile(): void;
+  /** Asks the user for a background image; resolves with its path, or undefined if cancelled. */
+  chooseBackgroundImage(): Promise<string | undefined>;
   /** Newest first, at most ten. */
   getClipboardRing(): Promise<readonly string[]>;
   onClipboardRingChanged(listener: (ring: readonly string[]) => void): Unsubscribe;

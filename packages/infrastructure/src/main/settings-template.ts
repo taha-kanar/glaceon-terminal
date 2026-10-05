@@ -9,7 +9,12 @@ export const SETTINGS_TEMPLATE = `// Glaceon Terminal settings. Changes apply as
 
   // tokyo-night, catppuccin-mocha, dracula, nord, gruvbox-dark, one-dark, solarized-dark
   // "theme": "tokyo-night",
-  // "backgroundOpacity": 0.72,
+  // "backgroundOpacity": 0.72,     // below 1 the desktop shows through
+  // "backgroundBlur": false,       // true: frosted glass instead of a sharp desktop
+  // "backgroundColor": "",         // "#rrggbb" painted behind the terminal
+  // "backgroundImage": "",         // e.g. "~/Pictures/wallpaper.jpg"
+  // "backgroundImageFit": "cover", // cover | contain | fill
+  // "backgroundImageOpacity": 1,
 
   // "cursorStyle": "block",        // block | bar | underline
   // "cursorBlink": true,

@@ -1,4 +1,6 @@
 export {
+  BACKGROUND_IMAGE_SCHEME,
+  backgroundImageUrl,
   BRIDGE_KEY,
   E2E_SWITCH,
   QUAKE_SWITCH,

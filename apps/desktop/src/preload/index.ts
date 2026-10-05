@@ -81,6 +81,8 @@ const bridge: GlaceonBridge = {
     listen(RendererChannel.snippetsChanged, (payload) => {
       listener(payload as SnippetsSnapshot);
     }),
+  chooseBackgroundImage: () =>
+    ipcRenderer.invoke(MainInvokeChannel.backgroundChooseImage) as Promise<string | undefined>,
   openSnippetsFile: () => {
     ipcRenderer.send(MainSendChannel.snippetsOpenFile);
   },

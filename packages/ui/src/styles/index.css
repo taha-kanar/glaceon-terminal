@@ -19,13 +19,28 @@
   color-scheme: dark;
 }
 
+/* Behind everything: an optional solid color and image (Settings → Window). */
+html {
+  background-color: var(--background-color, transparent) !important;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--background-image, none) center / var(--background-image-size, cover) no-repeat;
+  opacity: var(--background-image-opacity, 1);
+}
+
 html,
 body,
 #root {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: transparent;
+  background-color: transparent;
   font-family: var(--font-ui);
   font-size: 12px;
   color: var(--text);
@@ -1617,4 +1632,19 @@ body.dragging-column * {
 
 .drawer:focus {
   outline: none;
+}
+
+.field__inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-input {
+  width: 40px;
+  height: 26px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
 }

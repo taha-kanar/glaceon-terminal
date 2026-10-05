@@ -63,25 +63,6 @@ export function GeneralSection({ model, settings, report }: SectionProps): React
         />
       </Row>
 
-      <h3 className="section__title">Window</h3>
-      <Row
-        label="Background opacity"
-        hint={`${String(Math.round(settings.backgroundOpacity * 100))}%`}
-      >
-        <input
-          type="range"
-          className="range"
-          name="backgroundOpacity"
-          min={0.3}
-          max={1}
-          step={0.05}
-          value={settings.backgroundOpacity}
-          onChange={(event) => {
-            set('backgroundOpacity')(Number(event.target.value));
-          }}
-        />
-      </Row>
-
       <h3 className="section__title">Cursor</h3>
       <Row label="Style">
         <Select
