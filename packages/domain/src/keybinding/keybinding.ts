@@ -16,7 +16,7 @@ const tabSelect = Array.from({ length: 9 }, (_, i): KeybindingEntry => ({
   args: i + 1,
 }));
 
-export const DEFAULT_KEYBINDINGS: readonly KeybindingEntry[] = [
+const BINDINGS: readonly KeybindingEntry[] = [
   { key: 'cmd+t', command: C.tabNew },
   { key: 'cmd+alt+w', command: C.tabClose },
   { key: 'cmd+shift+]', command: C.tabNext },
@@ -47,4 +47,23 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingEntry[] = [
   { key: 'cmd+-', command: C.fontDecrease },
   { key: 'cmd+0', command: C.fontReset },
   { key: 'cmd+,', command: C.settingsOpen },
+  { key: 'cmd+shift+p', command: C.paletteToggle },
 ];
+
+/** Commands that keep working while the palette or settings panel is open. */
+const ALWAYS_AVAILABLE = new Set<string>([
+  C.paletteToggle,
+  C.settingsOpen,
+  C.windowNew,
+  C.windowClose,
+  C.fontIncrease,
+  C.fontDecrease,
+  C.fontReset,
+]);
+
+/** Built-in bindings. Everything that acts on panes and tabs pauses while an overlay is open. */
+export const DEFAULT_KEYBINDINGS: readonly KeybindingEntry[] = BINDINGS.map((entry) => {
+  if (ALWAYS_AVAILABLE.has(entry.command)) return entry;
+  const when = entry.when === undefined ? '!overlayOpen' : `(${entry.when}) && !overlayOpen`;
+  return { ...entry, when };
+});

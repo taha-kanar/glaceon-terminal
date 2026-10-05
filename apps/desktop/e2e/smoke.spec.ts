@@ -28,6 +28,7 @@ test('renderer is sandboxed and isolated', async ({ window }) => {
       'onRunCommand',
       'onSettingsChanged',
       'openSettingsFile',
+      'updateSetting',
     ],
   });
 });

@@ -4,6 +4,9 @@ import { useStore } from '../hooks/use-store';
 import { ConfirmDialog } from '../overlays/ConfirmDialog';
 import { ProblemsBanner } from '../overlays/ProblemsBanner';
 import { PaneArea } from '../panes/PaneArea';
+import { CommandPalette } from '../palette/CommandPalette';
+import { SETTINGS_SECTIONS } from '../settings/sections';
+import { SettingsPanel } from '../settings/SettingsPanel';
 import { TabBar } from '../tabs/TabBar';
 import type { AppModel } from './app-model';
 
@@ -16,6 +19,7 @@ export function App({ model }: AppProps): ReactElement {
   const sessions = useStore(model.sessions);
   const problems = useStore(model.problems);
   const confirmation = useStore(model.confirmation);
+  const overlay = useStore(model.overlay);
   const { actions } = model;
 
   return (
@@ -35,6 +39,21 @@ export function App({ model }: AppProps): ReactElement {
         actions={actions}
         bindSlot={model.bindSlot}
       />
+      {overlay?.kind === 'palette' && (
+        <CommandPalette
+          items={model.palette.items}
+          onRun={model.palette.run}
+          onClose={model.closeOverlay}
+        />
+      )}
+      {overlay?.kind === 'settings' && (
+        <SettingsPanel
+          model={model.settingsPanel}
+          sections={SETTINGS_SECTIONS}
+          initialSection={overlay.target}
+          onClose={model.closeOverlay}
+        />
+      )}
       {confirmation !== undefined && (
         <ConfirmDialog request={confirmation} onAnswer={actions.answerConfirmation} />
       )}

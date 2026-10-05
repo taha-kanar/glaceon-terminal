@@ -6,51 +6,36 @@ import {
   ContextKeys,
   CoreCommands,
   FontZoom,
+  INPUT_CAPTURE_CONTEXT,
   KeybindingService,
   ObservableStore,
+  OverlayCommands,
+  OverlayService,
+  PaletteService,
   SessionManager,
   TerminalSessionService,
+  ThemeCommands,
+  ThemeEditor,
   WorkspaceService,
-  type WindowPort,
 } from '@glaceon/application';
 import type { SettingsSnapshot } from '@glaceon/contracts';
-import {
-  CommandIds,
-  EMPTY_WORKSPACE,
-  resolveTheme,
-  type Settings,
-  type Workspace,
-} from '@glaceon/domain';
+import { CommandIds, EMPTY_WORKSPACE, type Workspace } from '@glaceon/domain';
 import {
   MessagePortPtyClient,
   RandomIdGenerator,
   requestPtyPort,
-  toXtermTheme,
   XtermViewRegistry,
-  type XtermViewOptions,
 } from '@glaceon/infrastructure/renderer';
 import { App, type AppActions, type AppModel, type TerminalSlotBinder } from '@glaceon/ui';
 import { createElement, type ReactElement } from 'react';
+import { settingsWriterFor, windowPortFor } from './bridge-adapters';
 import { createE2EProbe } from './e2e-probe';
 import { installKeyboardHandler } from './keyboard';
 import { applyTheme } from './theme-applier';
+import { viewOptions } from './view-options';
 
 export interface RendererCompositionRoot {
   render(): ReactElement;
-}
-
-function viewOptions(settings: Settings): XtermViewOptions {
-  return {
-    fontFamily: settings.fontFamily,
-    fontSize: settings.fontSize,
-    lineHeight: settings.lineHeight,
-    letterSpacing: settings.letterSpacing,
-    theme: toXtermTheme(resolveTheme(settings.theme)),
-    cursorStyle: settings.cursorStyle,
-    cursorBlink: settings.cursorBlink,
-    scrollback: settings.scrollback,
-    macOptionIsMeta: settings.macOptionIsMeta,
-  };
 }
 
 const sameList = (a: readonly string[], b: readonly string[]): boolean =>
@@ -66,23 +51,25 @@ export async function createRendererCompositionRoot(
     bridge.getSettings(),
   ]);
 
+  // ---- settings and theme
   const settingsState = new ObservableStore<SettingsSnapshot>(snapshot);
   bridge.onSettingsChanged((next) => {
     settingsState.set(next);
   });
-  const fontZoom = new FontZoom(computed([settingsState], () => settingsState.get().settings));
+  const baseSettings = computed([settingsState], () => settingsState.get().settings);
+  const fontZoom = new FontZoom(baseSettings);
   const settings = fontZoom.effective;
+  const writer = settingsWriterFor(bridge);
+  const themeEditor = new ThemeEditor({ settings: baseSettings, writer });
+  const theme = themeEditor.theme;
 
+  // ---- sessions and workspace
   const pty = new MessagePortPtyClient(port);
   const ids = new RandomIdGenerator();
   const sessions = new SessionManager(new TerminalSessionService({ pty, ids }));
   const workspaceStore = new ObservableStore<Workspace>(EMPTY_WORKSPACE);
   const confirmation = new ConfirmationService();
-  const windowPort: WindowPort = {
-    newWindow: () => bridge.newWindow(),
-    close: () => bridge.closeWindow(),
-    openSettingsFile: () => bridge.openSettingsFile(),
-  };
+  const windowPort = windowPortFor(bridge);
   const workspace = new WorkspaceService({
     store: workspaceStore,
     ids,
@@ -92,24 +79,35 @@ export async function createRendererCompositionRoot(
     window: windowPort,
   });
 
-  // Measure with the bundled font, not a fallback, before the first terminal is created.
+  // ---- views: measure with the bundled font before the first terminal exists
   await target.document.fonts.load(`${String(settings.get().fontSize)}px "JetBrains Mono"`);
-  const views = new XtermViewRegistry(target.document, viewOptions(settings.get()));
-  applyTheme(target.document.documentElement, settings.get());
-  settings.subscribe(() => {
-    views.setOptions(viewOptions(settings.get()));
-    applyTheme(target.document.documentElement, settings.get());
-  });
+  const views = new XtermViewRegistry(target.document, viewOptions(settings.get(), theme.get()));
+  const appearance = computed([settings, theme], () => ({
+    settings: settings.get(),
+    theme: theme.get(),
+  }));
+  const applyAppearance = (): void => {
+    const current = appearance.get();
+    views.setOptions(viewOptions(current.settings, current.theme));
+    applyTheme(target.document.documentElement, current.theme, current.settings.backgroundOpacity);
+  };
+  applyAppearance();
+  appearance.subscribe(applyAppearance);
   bindPaneLifecycle({ workspace: workspaceStore, service: workspace, sessions, views, settings });
 
+  // ---- commands, keybindings, overlays
+  const context = new ContextKeys();
+  const overlay = new OverlayService(context);
   const registry = new CommandRegistry();
+  const themeCommands = new ThemeCommands({ settings: baseSettings, writer, overlay });
   registry.registerContribution(
     new CoreCommands({ workspace, sessions, fontZoom, window: windowPort }),
   );
+  registry.registerContribution(new OverlayCommands(overlay));
+  registry.registerContribution(themeCommands);
   registry.onDidFail(({ commandId, error }) => {
     console.error(`[renderer] command ${commandId} failed`, error);
   });
-  const context = new ContextKeys();
   views.onFocusChange(({ focused }) => {
     context.set('terminalFocus', focused);
   });
@@ -117,6 +115,21 @@ export async function createRendererCompositionRoot(
     registry,
     context,
     userBindings: computed([settings], () => settings.get().keybindings),
+  });
+  const palette = new PaletteService({
+    registry,
+    providers: [themeCommands],
+    keybindings: keybindings.resolver,
+    overlay,
+  });
+  const refocus = (): void => {
+    const pane = workspace.activePane;
+    if (pane !== undefined) sessions.focus(pane);
+  };
+  overlay.onDidClose(() => {
+    themeEditor.cancel();
+    context.set(INPUT_CAPTURE_CONTEXT, false);
+    refocus();
   });
   installKeyboardHandler(target, keybindings);
   bridge.onRunCommand(({ command, args }) => {
@@ -150,8 +163,7 @@ export async function createRendererCompositionRoot(
     dismissPane: (pane) => workspace.dismissPane(pane),
     answerConfirmation: (confirmed) => {
       confirmation.answer(confirmed);
-      const pane = workspace.activePane;
-      if (pane !== undefined) sessions.focus(pane);
+      refocus();
     },
     openSettingsFile: () => windowPort.openSettingsFile(),
   };
@@ -165,6 +177,28 @@ export async function createRendererCompositionRoot(
     labelFor: (command) => keybindings.resolver.get().labelFor(command),
     actions,
     bindSlot,
+    overlay: overlay.state,
+    closeOverlay: () => overlay.close(),
+    palette: { items: (query) => palette.items(query), run: (item) => palette.run(item) },
+    settingsPanel: {
+      settings: baseSettings,
+      update: (key, value) => writer.update(key, value),
+      themes: {
+        draft: themeEditor.draft,
+        begin: (id) => themeEditor.begin(id),
+        setColor: (key, color) => themeEditor.setColor(key, color),
+        rename: (name) => themeEditor.rename(name),
+        save: () => themeEditor.save(),
+        cancel: () => themeEditor.cancel(),
+        remove: (id) => themeEditor.remove(id),
+      },
+      keybindings: {
+        resolver: keybindings.resolver,
+        commands: () => registry.list(),
+        setCapture: (capturing) => context.set(INPUT_CAPTURE_CONTEXT, capturing),
+      },
+      openSettingsFile: () => windowPort.openSettingsFile(),
+    },
   };
 
   workspace.ensureTab();

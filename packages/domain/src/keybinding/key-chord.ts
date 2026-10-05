@@ -111,6 +111,19 @@ export function sameChord(a: KeyChord, b: KeyChord): boolean {
   return chordId(a) === chordId(b);
 }
 
+/** The config.json spelling of a chord, e.g. `cmd+shift+d`; `parseChord` reads it back. */
+export function toChordSpec(chord: KeyChord): string {
+  return [
+    chord.ctrl ? 'ctrl' : '',
+    chord.alt ? 'alt' : '',
+    chord.shift ? 'shift' : '',
+    chord.meta ? 'cmd' : '',
+    chord.key,
+  ]
+    .filter((part) => part.length > 0)
+    .join('+');
+}
+
 const KEY_SYMBOLS: Readonly<Record<string, string>> = {
   left: '←',
   right: '→',

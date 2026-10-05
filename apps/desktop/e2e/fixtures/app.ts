@@ -65,8 +65,12 @@ function wrap(page: Page): GlaceonWindow {
     fontSize: () => page.evaluate(() => window.__glaceonE2E.fontSize()),
     type: (text) => page.keyboard.type(text),
     press: (keys) => page.keyboard.press(keys),
+    // A pid alone is not enough: input typed before the shell prints its prompt can be lost.
     ready: async () => {
-      await page.waitForFunction(() => window.__glaceonE2E.sessionPid() !== undefined);
+      await page.waitForFunction(() => {
+        const probe = window.__glaceonE2E;
+        return probe.sessionPid() !== undefined && /[$#%>] ?$/.test(probe.terminalText());
+      });
     },
   };
   return self;

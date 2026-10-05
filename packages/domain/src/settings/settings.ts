@@ -1,5 +1,6 @@
 import type { KeybindingEntry } from '../keybinding/keybinding';
-import { DEFAULT_THEME_ID } from '../theme/builtin-themes';
+import { BUILTIN_THEMES, DEFAULT_THEME_ID, resolveTheme } from '../theme/builtin-themes';
+import type { Theme } from '../theme/theme';
 
 export type CursorStyle = 'block' | 'bar' | 'underline';
 
@@ -24,6 +25,8 @@ export interface Settings {
   /** Command template for opening `file:line:col` links, e.g. `code -g {file}:{line}:{col}`. */
   readonly editorCommand: string;
   readonly keybindings: readonly KeybindingEntry[];
+  /** Themes made with the theme editor, selectable next to the built-in ones. */
+  readonly customThemes: readonly Theme[];
 }
 
 export const FONT_SIZE_RANGE = { min: 6, max: 72 } as const;
@@ -44,6 +47,7 @@ export const DEFAULT_SETTINGS: Settings = {
   closeOnExit: 'clean',
   editorCommand: 'code -g {file}:{line}:{col}',
   keybindings: [],
+  customThemes: [],
 };
 
 export function clampFontSize(size: number): number {
@@ -55,4 +59,14 @@ export type PartialSettings = Partial<Settings>;
 
 export function withDefaults(partial: PartialSettings): Settings {
   return { ...DEFAULT_SETTINGS, ...partial };
+}
+
+/** Built-in themes followed by custom ones; a custom theme may shadow a built-in id. */
+export function availableThemes(settings: Pick<Settings, 'customThemes'>): readonly Theme[] {
+  const custom = new Set(settings.customThemes.map((theme) => theme.id));
+  return [...BUILTIN_THEMES.filter((theme) => !custom.has(theme.id)), ...settings.customThemes];
+}
+
+export function activeTheme(settings: Pick<Settings, 'theme' | 'customThemes'>): Theme {
+  return resolveTheme(settings.theme, availableThemes(settings));
 }

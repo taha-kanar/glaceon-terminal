@@ -11,6 +11,9 @@ export interface KeybindingServiceDeps {
   readonly userBindings: ReadableStore<readonly KeybindingEntry[]>;
 }
 
+/** Context key set while a component wants raw key presses (no shortcuts). */
+export const INPUT_CAPTURE_CONTEXT = 'inputCapture';
+
 /** Turns key presses into command executions using the current keybinding map. */
 export class KeybindingService {
   readonly #deps: KeybindingServiceDeps;
@@ -26,9 +29,11 @@ export class KeybindingService {
 
   /** Returns true when the key press ran a command (the caller should then swallow the event). */
   handleKey(input: KeyInput): boolean {
+    const { registry, context } = this.#deps;
+    // A focused key recorder (keybinding editor) receives every key itself.
+    if (context.is(INPUT_CAPTURE_CONTEXT)) return false;
     const chords = chordsFromKeyInput(input);
     if (chords.length === 0) return false;
-    const { registry, context } = this.#deps;
     const binding = this.resolver.get().resolve(chords, (key) => context.is(key));
     if (binding === undefined || !registry.has(binding.command)) return false;
     return registry.execute(binding.command, binding.args);

@@ -1,15 +1,19 @@
 import {
+  err,
   ok,
   toDisposable,
   type Disposable,
   type PaneId,
   type PartialSettings,
   type Result,
+  type Settings,
 } from '@glaceon/domain';
 import type { TerminalViewRegistry } from '../ports/terminal-view-registry';
 import type { WindowPort } from '../ports/window-port';
 import type { ProcessInspector } from '../pty-host/process-inspector';
-import type { SettingsSource } from '../settings/settings-source';
+import type { WritableSettingsSource } from '../settings/settings-source';
+import type { SettingsWriter } from '../settings/settings-writer';
+import type { ObservableStore } from '../store/store';
 
 export class FakeWindowPort implements WindowPort {
   newWindows = 0;
@@ -55,7 +59,7 @@ export class FakeProcessInspector implements ProcessInspector {
   }
 }
 
-export class FakeSettingsSource implements SettingsSource {
+export class FakeSettingsSource implements WritableSettingsSource {
   next: Result<PartialSettings, string> = ok({});
   #onChange: (() => void) | undefined;
 
@@ -70,9 +74,37 @@ export class FakeSettingsSource implements SettingsSource {
     });
   }
 
+  readonly written: { key: keyof Settings; value: unknown }[] = [];
+  writeError: string | undefined;
+
+  write<K extends keyof Settings>(key: K, value: Settings[K]): Promise<Result<void, string>> {
+    if (this.writeError !== undefined) return Promise.resolve(err(this.writeError));
+    this.written.push({ key, value });
+    this.next = ok({ ...(this.next.ok ? this.next.value : {}), [key]: value });
+    return Promise.resolve(ok(undefined));
+  }
+
   /** Simulates an edit of the settings file. */
   change(next: Result<PartialSettings, string>): void {
     this.next = next;
     this.#onChange?.();
+  }
+}
+
+/** Applies updates to an in-memory settings store, like main does after writing the file. */
+export class FakeSettingsWriter implements SettingsWriter {
+  readonly updates: { key: keyof Settings; value: unknown }[] = [];
+  failWith: string | undefined;
+  readonly #store: ObservableStore<Settings>;
+
+  constructor(store: ObservableStore<Settings>) {
+    this.#store = store;
+  }
+
+  update<K extends keyof Settings>(key: K, value: Settings[K]): Promise<Result<void, string>> {
+    if (this.failWith !== undefined) return Promise.resolve(err(this.failWith));
+    this.updates.push({ key, value });
+    this.#store.update((settings) => ({ ...settings, [key]: value }));
+    return Promise.resolve(ok(undefined));
   }
 }

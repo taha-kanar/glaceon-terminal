@@ -5,6 +5,7 @@ import {
   formatChord,
   parseChord,
   sameChord,
+  toChordSpec,
   type KeyInput,
 } from './key-chord';
 
@@ -52,6 +53,16 @@ describe('parseChord', () => {
     expect(formatChord(chord)).toBe('⌃⌥⇧⌘↩');
     expect(formatChord({ key: 'd', meta: true, ctrl: false, alt: false, shift: false })).toBe('⌘D');
     expect(sameChord(chord, parseChord('ctrl+alt+shift+cmd+return') ?? chord)).toBe(true);
+  });
+});
+
+describe('toChordSpec', () => {
+  it('round-trips through parseChord', () => {
+    for (const spec of ['cmd+shift+d', 'ctrl+alt+left', 'cmd++', 'f5', 'ctrl+tab']) {
+      const chord = parseChord(spec);
+      if (chord === undefined) throw new Error(spec);
+      expect(parseChord(toChordSpec(chord))).toEqual(chord);
+    }
   });
 });
 

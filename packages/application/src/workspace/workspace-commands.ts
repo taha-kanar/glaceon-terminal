@@ -47,6 +47,7 @@ export class CoreCommands implements CommandContribution {
         id: C.tabSelect,
         title: 'Select Tab',
         category: 'Tab',
+        hideInPalette: true,
         run: (args) => {
           if (typeof args === 'number') workspace.selectTabAt(args);
         },
@@ -145,12 +146,6 @@ export class CoreCommands implements CommandContribution {
         run: () => fontZoom.decrease(),
       },
       { id: C.fontReset, title: 'Reset Font Size', category: 'View', run: () => fontZoom.reset() },
-      {
-        id: C.settingsOpen,
-        title: 'Open Settings',
-        category: 'Settings',
-        run: () => window.openSettingsFile(),
-      },
       {
         id: C.settingsOpenFile,
         title: 'Open Settings File',

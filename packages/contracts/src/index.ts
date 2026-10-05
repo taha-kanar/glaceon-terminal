@@ -4,6 +4,8 @@ export {
   type GlaceonBridge,
   type RunCommandRequest,
   type SettingsSnapshot,
+  type SettingsUpdateRequest,
+  type SettingsUpdateResult,
   type Unsubscribe,
 } from './bridge';
 export {
@@ -19,4 +21,4 @@ export {
   decodePtyHostControlMessage,
   decodePtyHostMessage,
 } from './pty-protocol-decoders';
-export { decodeRunCommandRequest } from './run-command-decoder';
+export { decodeRunCommandRequest, decodeSettingsUpdateRequest } from './run-command-decoder';

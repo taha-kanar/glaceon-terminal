@@ -17,6 +17,14 @@ export interface RunCommandRequest {
   readonly args?: string | number;
 }
 
+export interface SettingsUpdateRequest {
+  readonly key: string;
+  readonly value: unknown;
+}
+
+export type SettingsUpdateResult =
+  { readonly ok: true } | { readonly ok: false; readonly error: string };
+
 export type Unsubscribe = () => void;
 
 /** The only surface a renderer has into the privileged world. */
@@ -25,6 +33,8 @@ export interface GlaceonBridge {
   /** Asks main for a pty-host connection; the port arrives as a window message. */
   connectPty(): Promise<void>;
   getSettings(): Promise<SettingsSnapshot>;
+  /** Validated and written by main; the new snapshot follows via `onSettingsChanged`. */
+  updateSetting(request: SettingsUpdateRequest): Promise<SettingsUpdateResult>;
   onSettingsChanged(listener: (snapshot: SettingsSnapshot) => void): Unsubscribe;
   onRunCommand(listener: (request: RunCommandRequest) => void): Unsubscribe;
   onCloseRequested(listener: () => void): Unsubscribe;

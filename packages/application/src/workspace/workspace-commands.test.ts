@@ -8,6 +8,11 @@ import { SessionManager } from '../terminal/session-manager';
 import { TerminalSessionService } from '../terminal/terminal-session-service';
 import { FakePtyPort, FakeWindowPort, SequentialIdGenerator } from '../testing';
 import { CoreCommands } from './workspace-commands';
+import { ContextKeys } from '../keybinding/context-keys';
+import { OverlayCommands } from '../overlay/overlay-commands';
+import { OverlayService } from '../overlay/overlay-service';
+import { ThemeCommands } from '../theme/theme-commands';
+import { FakeSettingsWriter } from '../testing';
 import { WorkspaceService } from './workspace-service';
 
 describe('CoreCommands', () => {
@@ -29,13 +34,18 @@ describe('CoreCommands', () => {
     const fontZoom = new FontZoom(settings);
     const registry = new CommandRegistry();
     registry.registerContribution(new CoreCommands({ workspace, sessions, fontZoom, window }));
+    const overlay = new OverlayService(new ContextKeys());
+    registry.registerContribution(new OverlayCommands(overlay));
+    registry.registerContribution(
+      new ThemeCommands({ settings, writer: new FakeSettingsWriter(settings), overlay }),
+    );
 
     for (const id of Object.values(CommandIds)) expect(registry.has(id), id).toBe(true);
 
     registry.execute(CommandIds.tabNew);
     registry.execute(CommandIds.fontIncrease);
     registry.execute(CommandIds.windowNew);
-    registry.execute(CommandIds.settingsOpen);
+    registry.execute(CommandIds.settingsOpenFile);
     registry.execute(CommandIds.terminalClear);
     registry.execute(CommandIds.tabSelect, 'bad');
     registry.execute(CommandIds.windowClose);

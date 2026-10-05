@@ -1,10 +1,13 @@
 import type {
   CommandArgs,
   ConfirmationRequest,
+  OverlayState,
+  PaletteItem,
   ReadableStore,
   SessionInfoMap,
 } from '@glaceon/application';
 import type { PaneId, Settings, SplitPath, TabId, Workspace } from '@glaceon/domain';
+import type { SettingsPanelModel } from '../settings/settings-panel-model';
 
 /** Lets a pane slot host the terminal view of a pane. Returns the detach function. */
 export type TerminalSlotBinder = (pane: PaneId, element: HTMLElement) => () => void;
@@ -32,4 +35,11 @@ export interface AppModel {
   readonly labelFor: (command: string) => string | undefined;
   readonly actions: AppActions;
   readonly bindSlot: TerminalSlotBinder;
+  readonly overlay: ReadableStore<OverlayState | undefined>;
+  readonly closeOverlay: () => void;
+  readonly palette: {
+    readonly items: (query: string) => readonly PaletteItem[];
+    readonly run: (item: PaletteItem) => void;
+  };
+  readonly settingsPanel: SettingsPanelModel;
 }

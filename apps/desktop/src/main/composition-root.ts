@@ -8,8 +8,10 @@ import {
   RendererChannel,
   type RunCommandRequest,
   type SettingsSnapshot,
+  type SettingsUpdateResult,
+  decodeSettingsUpdateRequest,
 } from '@glaceon/contracts';
-import { CommandIds } from '@glaceon/domain';
+import { CommandIds, type Settings } from '@glaceon/domain';
 import {
   buildApplicationMenu,
   JsoncSettingsSource,
@@ -99,6 +101,16 @@ export function createMainCompositionRoot(): MainCompositionRoot {
       ptyHost.connect(event.sender, String(window.id));
     });
     ipcMain.handle(MainInvokeChannel.settingsGet, () => snapshot());
+    ipcMain.handle(
+      MainInvokeChannel.settingsUpdate,
+      async (_event, payload: unknown): Promise<SettingsUpdateResult> => {
+        const request = decodeSettingsUpdateRequest(payload);
+        if (request === undefined) return { ok: false, error: 'Malformed settings update' };
+        // The value is validated against the schema by the settings source before writing.
+        const result = await settings.update(request.key as keyof Settings, request.value as never);
+        return result.ok ? { ok: true } : { ok: false, error: result.error };
+      },
+    );
     ipcMain.on(MainSendChannel.windowNew, () => {
       openWindow();
     });

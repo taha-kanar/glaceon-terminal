@@ -2,6 +2,7 @@
 export const MainInvokeChannel = {
   ptyConnect: 'pty:connect',
   settingsGet: 'settings:get',
+  settingsUpdate: 'settings:update',
 } as const;
 
 /** send() channels handled by the main process (renderer → main, fire and forget). */

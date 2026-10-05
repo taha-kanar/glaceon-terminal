@@ -1,4 +1,4 @@
-import { deriveUiPalette, resolveTheme, type Settings } from '@glaceon/domain';
+import { deriveUiPalette, type Theme } from '@glaceon/domain';
 
 const VARIABLES = {
   surface: '--surface',
@@ -14,8 +14,8 @@ const VARIABLES = {
 } as const;
 
 /** Publishes the theme's chrome colors as CSS custom properties. */
-export function applyTheme(root: HTMLElement, settings: Settings): void {
-  const palette = deriveUiPalette(resolveTheme(settings.theme), settings.backgroundOpacity);
+export function applyTheme(root: HTMLElement, theme: Theme, backgroundOpacity: number): void {
+  const palette = deriveUiPalette(theme, backgroundOpacity);
   for (const [key, variable] of Object.entries(VARIABLES)) {
     root.style.setProperty(variable, palette[key as keyof typeof VARIABLES]);
   }

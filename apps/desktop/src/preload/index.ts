@@ -9,6 +9,7 @@ import {
   RendererChannel,
   type GlaceonBridge,
   type SettingsSnapshot,
+  type SettingsUpdateResult,
   type Unsubscribe,
 } from '@glaceon/contracts';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
@@ -35,6 +36,8 @@ const bridge: GlaceonBridge = {
     await ipcRenderer.invoke(MainInvokeChannel.ptyConnect);
   },
   getSettings: () => ipcRenderer.invoke(MainInvokeChannel.settingsGet) as Promise<SettingsSnapshot>,
+  updateSetting: (request) =>
+    ipcRenderer.invoke(MainInvokeChannel.settingsUpdate, request) as Promise<SettingsUpdateResult>,
   // Payloads from main are trusted; run-command requests are still decoded defensively.
   onSettingsChanged: (listener) =>
     listen(RendererChannel.settingsChanged, (payload) => listener(payload as SettingsSnapshot)),

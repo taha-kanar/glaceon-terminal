@@ -28,6 +28,9 @@ export const CommandIds = {
   fontReset: 'view.fontReset',
   settingsOpen: 'settings.open',
   settingsOpenFile: 'settings.openFile',
+  paletteToggle: 'palette.toggle',
+  themeSelect: 'theme.select',
+  themeEdit: 'theme.edit',
 } as const;
 
 export type BuiltinCommandId = (typeof CommandIds)[keyof typeof CommandIds];

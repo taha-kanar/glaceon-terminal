@@ -1,3 +1,11 @@
 export { App, type AppProps } from './app/App';
 export type { AppActions, AppModel, TerminalSlotBinder } from './app/app-model';
 export { useStore } from './hooks/use-store';
+export type {
+  KeybindingsModel,
+  SettingsPanelModel,
+  ThemeEditorModel,
+  UpdateSetting,
+} from './settings/settings-panel-model';
+export type { SettingsSection } from './settings/section';
+export { SETTINGS_SECTIONS } from './settings/sections';

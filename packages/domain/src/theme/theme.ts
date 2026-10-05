@@ -120,3 +120,26 @@ export function deriveUiPalette(theme: Theme, backgroundOpacity: number): UiPale
     success: colors.ansi.green,
   };
 }
+
+/** A copy of `base` with a new id and name, ready to be edited. */
+export function cloneTheme(
+  base: Theme,
+  identity: { readonly id: string; readonly name: string },
+): Theme {
+  return { ...base, ...identity, colors: { ...base.colors, ansi: { ...base.colors.ansi } } };
+}
+
+/** URL-safe id derived from a theme name, made unique against `taken`. */
+export function themeIdFor(name: string, taken: ReadonlySet<string>): string {
+  const base =
+    name
+      .toLocaleLowerCase('tr')
+      .replace(/ı/g, 'i')
+      .normalize('NFKD')
+      .replace(/\p{M}/gu, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'custom-theme';
+  let id = base;
+  for (let n = 2; taken.has(id); n++) id = `${base}-${String(n)}`;
+  return id;
+}

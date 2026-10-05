@@ -85,6 +85,13 @@ describe('KeybindingService', () => {
     expect(previous).toHaveBeenCalledOnce();
   });
 
+  it('lets a focused key recorder receive every key', () => {
+    const { registry, context, service } = setup();
+    registry.register({ id: CommandIds.paneSplitRight, title: 'Split', run: vi.fn() });
+    context.set('inputCapture', true);
+    expect(service.handleKey(key({}))).toBe(false);
+  });
+
   it('passes binding args and follows user binding changes', () => {
     const { registry, bindings, service } = setup();
     const select = vi.fn();

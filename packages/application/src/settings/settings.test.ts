@@ -43,6 +43,19 @@ describe('SettingsService', () => {
   });
 });
 
+describe('SettingsService.update', () => {
+  it('writes through the source and reloads', async () => {
+    const source = new FakeSettingsSource();
+    const service = new SettingsService(source);
+    await service.start();
+    expect(await service.update('theme', 'nord')).toEqual({ ok: true, value: undefined });
+    expect(service.state.get().settings.theme).toBe('nord');
+    source.writeError = 'read-only file system';
+    expect((await service.update('fontSize', 20)).ok).toBe(false);
+    expect(service.state.get().settings.fontSize).toBe(DEFAULT_SETTINGS.fontSize);
+  });
+});
+
 describe('FontZoom', () => {
   it('adjusts the configured size within bounds and resets', () => {
     const base = new ObservableStore({ ...DEFAULT_SETTINGS, fontSize: 70 });

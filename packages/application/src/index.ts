@@ -14,6 +14,12 @@ export type * from './settings/settings-source';
 export * from './settings/settings-service';
 export * from './settings/font-zoom';
 export * from './confirmation/confirmation-service';
+export type * from './settings/settings-writer';
+export * from './overlay/overlay-service';
+export * from './overlay/overlay-commands';
+export * from './palette/palette-service';
+export * from './theme/theme-editor';
+export * from './theme/theme-commands';
 
 export type {
   ForegroundProcess,

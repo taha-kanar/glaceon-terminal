@@ -29,3 +29,5 @@ export * from './keybinding/when-clause';
 export * from './keybinding/keybinding';
 export * from './command/command-ids';
 export * from './settings/settings';
+export * from './search/fuzzy';
+export * from './keybinding/keybinding-edits';
