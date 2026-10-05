@@ -1,0 +1,44 @@
+import { homedir } from 'node:os';
+import { buildShellEnvironment, defaultShellProfile, PtySessionHost } from '@glaceon/application';
+import { decodePtyHostControlMessage } from '@glaceon/contracts';
+import type { Disposable } from '@glaceon/domain';
+import { NodePtyProcessFactory, servePtyConnection } from '@glaceon/infrastructure/pty-host';
+
+export interface PtyHostCompositionRoot {
+  start(): void;
+}
+
+/** Wires the pty-host utility process: one PtySessionHost shared by every window. */
+export function createPtyHostCompositionRoot(): PtyHostCompositionRoot {
+  const shellEnv = buildShellEnvironment(process.env, {
+    termProgram: 'Glaceon',
+    termProgramVersion: process.env['GLACEON_VERSION'] ?? '0.0.0',
+    fallbackLang: 'en_US.UTF-8',
+  });
+  const host = new PtySessionHost({
+    processes: new NodePtyProcessFactory(),
+    shell: defaultShellProfile({ env: process.env, shellEnv, homeDirectory: homedir() }),
+  });
+  const connections = new Map<string, Disposable>();
+
+  return {
+    start() {
+      process.parentPort.on('message', (event) => {
+        const message = decodePtyHostControlMessage(event.data);
+        if (message === undefined) return;
+        if (message.t === 'disconnect') {
+          connections.get(message.connectionId)?.dispose();
+          connections.delete(message.connectionId);
+          return;
+        }
+        const port = event.ports[0];
+        if (port === undefined) return;
+        connections.get(message.connectionId)?.dispose();
+        connections.set(message.connectionId, servePtyConnection(port, host));
+      });
+      process.on('exit', () => {
+        host.dispose();
+      });
+    },
+  };
+}

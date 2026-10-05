@@ -1,0 +1,40 @@
+{
+  "name": "@glaceon/desktop",
+  "productName": "Glaceon Terminal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Glaceon Terminal for macOS",
+  "author": "Taha Kanar",
+  "type": "module",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "package": "electron-vite build && electron-builder --mac dir --config electron-builder.yml",
+    "package:dmg": "electron-vite build && electron-builder --mac dmg --config electron-builder.yml",
+    "typecheck": "tsc -p tsconfig.json && tsc -p src/main && tsc -p src/preload && tsc -p src/pty-host && tsc -p src/renderer && tsc -p e2e",
+    "e2e": "electron-vite build && playwright test -c e2e/playwright.config.ts",
+    "e2e:packaged": "pnpm package && GLACEON_E2E_EXECUTABLE=\"$PWD/dist/mac-arm64/Glaceon Terminal.app/Contents/MacOS/Glaceon Terminal\" playwright test -c e2e/playwright.config.ts"
+  },
+  "dependencies": {
+    "node-pty": "^1.1.0"
+  },
+  "devDependencies": {
+    "@glaceon/application": "workspace:*",
+    "@glaceon/contracts": "workspace:*",
+    "@glaceon/domain": "workspace:*",
+    "@glaceon/infrastructure": "workspace:*",
+    "@glaceon/ui": "workspace:*",
+    "@playwright/test": "^1.63.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "vite": "~7.3.6"
+  }
+}

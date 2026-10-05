@@ -1,0 +1,12 @@
+packages:
+  - packages/*
+  - apps/*
+
+onlyBuiltDependencies:
+  - electron
+  - esbuild
+  - node-pty
+
+ignoredBuiltDependencies:
+  - electron-winstaller
+  - unrs-resolver

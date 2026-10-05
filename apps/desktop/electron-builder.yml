@@ -1,0 +1,22 @@
+appId: com.glaceon.terminal
+productName: Glaceon Terminal
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - package.json
+# node-pty ships N-API prebuilds; no rebuild against Electron headers is needed.
+npmRebuild: false
+asarUnpack:
+  - '**/node_modules/node-pty/**'
+mac:
+  target:
+    - target: dir
+      arch: arm64
+  category: public.app-category.developer-tools
+  # Personal, unsigned build.
+  identity: null
+  hardenedRuntime: false
+dmg:
+  artifactName: ${productName}-${version}-${arch}.${ext}

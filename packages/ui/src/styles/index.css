@@ -1,0 +1,39 @@
+:root {
+  --titlebar-height: 28px;
+  --workspace-padding: 6px 10px 10px;
+  --window-tint: rgb(22 22 30 / 72%);
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--window-tint);
+}
+
+.titlebar {
+  flex: none;
+  height: var(--titlebar-height);
+  -webkit-app-region: drag;
+}
+
+.workspace {
+  flex: 1;
+  min-height: 0;
+  padding: var(--workspace-padding);
+}
+
+.terminal-slot {
+  width: 100%;
+  height: 100%;
+}
