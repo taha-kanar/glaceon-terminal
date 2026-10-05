@@ -43,7 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lineHeight: 1.2,
   letterSpacing: 0,
   theme: DEFAULT_THEME_ID,
-  backgroundOpacity: 0.85,
+  backgroundOpacity: 0.72,
   cursorStyle: 'block',
   cursorBlink: true,
   scrollback: 10_000,

@@ -1,6 +1,6 @@
 import type { RenameTarget, SessionInfoMap, WindowSummary } from '@glaceon/application';
 import { CommandIds, leafIds, type Workspace } from '@glaceon/domain';
-import { useCallback, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import { useCallback, useRef, useState, type ReactElement } from 'react';
 import type { AppActions } from '../app/app-model';
 import { ContextMenu, type MenuEntry } from '../menu/ContextMenu';
 import type { ArrangeActions } from './arrange-actions';
@@ -20,8 +20,6 @@ export interface TabBarProps {
   /** All windows, for “Move to Window”. */
   readonly windows: readonly WindowSummary[];
   readonly newTabLabel: string | undefined;
-  /** Shown at the right end of the title bar. */
-  readonly trailing?: ReactNode;
 }
 
 interface OpenMenu {
@@ -40,7 +38,7 @@ export function TabBar(props: TabBarProps): ReactElement {
   const drag = useTabDrag(list, workspace, { move: arrange.moveTab, tearOff: arrange.tearOff });
 
   return (
-    <header className="titlebar">
+    <nav className="tabbar">
       <div
         ref={list}
         className={drag.state?.tearing === true ? 'tabs tabs--tearing' : 'tabs'}
@@ -149,10 +147,9 @@ export function TabBar(props: TabBarProps): ReactElement {
           +
         </button>
       </div>
-      {props.trailing}
       {menu !== undefined && (
         <ContextMenu x={menu.x} y={menu.y} entries={menu.entries} onClose={closeMenu} />
       )}
-    </header>
+    </nav>
   );
 }

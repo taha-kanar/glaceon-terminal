@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/plus-jakarta-sans": "^5.3.0",
     "@glaceon/application": "workspace:*",
     "@glaceon/contracts": "workspace:*",
     "@glaceon/domain": "workspace:*",

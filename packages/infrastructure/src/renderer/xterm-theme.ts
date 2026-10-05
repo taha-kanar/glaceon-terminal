@@ -15,6 +15,10 @@ export function toXtermTheme(theme: Theme): ITheme {
     selectionBackground: rgba(colors.selection, 0.7),
     // The active search match is a selection while the find input has focus.
     selectionInactiveBackground: rgba(colors.selection, 0.6),
+    // A faint, thin scrollbar that does not draw a band down the pane.
+    scrollbarSliderBackground: rgba(colors.foreground, 0.1),
+    scrollbarSliderHoverBackground: rgba(colors.foreground, 0.2),
+    scrollbarSliderActiveBackground: rgba(colors.foreground, 0.28),
     ...colors.ansi,
   };
 }

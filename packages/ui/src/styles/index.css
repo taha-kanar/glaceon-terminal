@@ -1,7 +1,8 @@
 :root {
   --titlebar-height: 38px;
+  --tabbar-height: 36px;
   --traffic-light-space: 78px;
-  --surface: rgba(26, 27, 38, 0.85);
+  --surface: rgba(26, 27, 38, 0.72);
   --surface-raised: rgba(40, 42, 56, 0.96);
   --text: #c0caf5;
   --text-muted: rgba(192, 202, 245, 0.55);
@@ -10,7 +11,11 @@
   --border: rgba(192, 202, 245, 0.1);
   --danger: #f7768e;
   --warning: #e0af68;
-  --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  /* Glass chrome over the window's vibrancy. */
+  --glass-bar: rgba(10, 10, 20, 0.28);
+  --glass-line: rgba(255, 255, 255, 0.06);
+  --glass-hover: rgba(255, 255, 255, 0.06);
+  --font-ui: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   color-scheme: dark;
 }
 
@@ -25,6 +30,7 @@ body,
   font-size: 12px;
   color: var(--text);
   user-select: none;
+  -webkit-font-smoothing: antialiased;
 }
 
 .app {
@@ -32,55 +38,231 @@ body,
   flex-direction: column;
   height: 100%;
   background: var(--surface);
+  /* Keeps the glow layer below the content but above this background. */
+  isolation: isolate;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* ---- title bar / tabs ---- */
+/* Soft accent light, as if through frosted glass. */
+.app::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse at 15% 0%,
+      color-mix(in srgb, var(--accent) 9%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(ellipse at 85% 100%, rgba(187, 154, 247, 0.06), transparent 55%);
+}
+
+/* Grain, for depth. */
+.app::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0.02;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* ---- title bar: tools, command bar, status ---- */
 
 .titlebar {
   flex: none;
   height: var(--titlebar-height);
   padding-left: var(--traffic-light-space);
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  gap: 4px;
+  background: var(--glass-bar);
+  border-bottom: 1px solid var(--glass-line);
   -webkit-app-region: drag;
-  border-bottom: 1px solid var(--border);
+}
+
+.titlebar__brand {
+  display: grid;
+  place-items: center;
+  padding: 0 6px 0 2px;
+  color: var(--accent);
+  opacity: 0.85;
+}
+
+.titlebar__brand svg {
+  width: 15px;
+  height: 15px;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 45%, transparent));
+}
+
+.titlebar__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.titlebar__button {
+  -webkit-app-region: no-drag;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  transition:
+    background-color 100ms ease,
+    color 100ms ease,
+    transform 100ms ease;
+}
+
+.titlebar__button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.titlebar__button:hover {
+  background: var(--glass-hover);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.titlebar__button:active {
+  transform: scale(0.94);
+}
+
+.command-bar {
+  -webkit-app-region: no-drag;
+  flex: 1;
+  max-width: 420px;
+  height: 24px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--glass-line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  transition:
+    background-color 100ms ease,
+    border-color 100ms ease;
+}
+
+.command-bar:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.command-bar svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  opacity: 0.6;
+}
+
+.command-bar__text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  letter-spacing: 0.2px;
+}
+
+.command-bar__key {
+  flex: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  opacity: 0.55;
+}
+
+.titlebar__trailing {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 120px;
+  height: 100%;
+}
+
+/* ---- tab bar ---- */
+
+.tabbar {
+  flex: none;
+  height: var(--tabbar-height);
+  display: flex;
+  align-items: stretch;
+  padding: 0 6px;
+  background: rgba(10, 10, 20, 0.18);
+  border-bottom: 1px solid var(--glass-line);
 }
 
 .tabs {
   display: flex;
-  align-items: center;
-  gap: 2px;
+  align-items: stretch;
+  gap: 1px;
   min-width: 0;
-  padding: 0 8px 0 0;
   overflow: hidden;
 }
 
 .tab {
-  -webkit-app-region: no-drag;
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 90px;
-  max-width: 220px;
-  height: 26px;
-  padding: 0 6px 0 10px;
-  border-radius: 7px;
+  min-width: 100px;
+  max-width: 200px;
+  padding: 0 10px 0 12px;
   color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
   cursor: default;
   transition:
-    background-color 120ms ease,
-    color 120ms ease;
+    background-color 100ms ease,
+    color 100ms ease;
+}
+
+/* Underline of the active tab, with a glow. */
+.tab::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: transparent;
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .tab:hover {
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   color: var(--text);
 }
 
 .tab--active {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.07);
   color: var(--text);
-  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.tab--active::after {
+  background: var(--tab-color, var(--accent));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--tab-color, var(--accent)) 55%, transparent);
 }
 
 .tab__index {
@@ -95,6 +277,7 @@ body,
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .tab__badge {
@@ -113,15 +296,16 @@ body,
   color: inherit;
   font: inherit;
   line-height: 1;
-  border-radius: 5px;
   cursor: default;
 }
 
 .tab__close {
   width: 18px;
   height: 18px;
+  border-radius: 5px;
   font-size: 14px;
   opacity: 0;
+  transition: all 100ms ease;
 }
 
 .tab:hover .tab__close,
@@ -131,20 +315,28 @@ body,
 
 .tab__close:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
   color: var(--danger);
 }
 
 .tabs__new {
-  width: 26px;
-  height: 26px;
+  align-self: center;
+  width: 30px;
+  height: 28px;
+  margin: 0 2px;
+  border-radius: 6px;
   font-size: 18px;
   color: var(--text-muted);
+  transition: all 100ms ease;
 }
 
 .tabs__new:hover {
-  background: var(--accent-soft);
-  color: var(--text);
+  background: var(--glass-hover);
+  color: var(--accent);
+}
+
+.tabs__new:active {
+  transform: scale(0.9);
 }
 
 /* ---- panes ---- */
@@ -194,6 +386,24 @@ body,
 
 .terminal-host .xterm-viewport {
   background-color: transparent !important;
+  /* xterm draws its own scrollbar; the native one shows as a gray band when macOS is set to
+     always show scroll bars. */
+  scrollbar-width: none;
+}
+
+.terminal-host .xterm-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+/* Thin rounded scrollbar thumb, flush with the right edge. */
+.terminal-host .xterm-scrollable-element > .scrollbar.vertical {
+  width: 8px !important;
+}
+
+.terminal-host .xterm-scrollable-element > .scrollbar.vertical > .slider {
+  left: 2px !important;
+  width: 5px !important;
+  border-radius: 5px;
 }
 
 .divider {
@@ -993,10 +1203,6 @@ body.dragging-column * {
   background: var(--tab-color);
 }
 
-.tab--active {
-  box-shadow: inset 0 -2px 0 var(--tab-color, var(--accent));
-}
-
 .tab--pinned {
   min-width: 0;
   padding: 0 8px;
@@ -1193,25 +1399,6 @@ body.dragging-column * {
   font-size: 11px;
   white-space: nowrap;
   cursor: default;
-}
-
-.titlebar-button {
-  -webkit-app-region: no-drag;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  margin-right: 10px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.titlebar-button:hover {
-  background: var(--surface-hover, rgba(255, 255, 255, 0.08));
-  color: var(--text);
 }
 
 .process-indicator__dot {
@@ -1422,10 +1609,6 @@ body.dragging-column * {
 }
 
 /* ---- quake window: no traffic lights, rounded bottom edge ---- */
-
-.app--quake .titlebar {
-  padding-left: 8px;
-}
 
 .app--quake {
   border-radius: 0 0 10px 10px;

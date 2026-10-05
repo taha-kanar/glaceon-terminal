@@ -9,7 +9,7 @@ export const SETTINGS_TEMPLATE = `// Glaceon Terminal settings. Changes apply as
 
   // tokyo-night, catppuccin-mocha, dracula, nord, gruvbox-dark, one-dark, solarized-dark
   // "theme": "tokyo-night",
-  // "backgroundOpacity": 0.85,
+  // "backgroundOpacity": 0.72,
 
   // "cursorStyle": "block",        // block | bar | underline
   // "cursorBlink": true,

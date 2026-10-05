@@ -9,13 +9,13 @@ import { CommandPalette } from '../palette/CommandPalette';
 import { SearchBar } from '../search/SearchBar';
 import { SETTINGS_SECTIONS } from '../settings/sections';
 import { SettingsPanel } from '../settings/SettingsPanel';
-import { SettingsButton } from '../settings/SettingsButton';
 import { TabBar } from '../tabs/TabBar';
 import { JobsPanel } from '../jobs/JobsPanel';
 import { ProcessIndicator } from '../jobs/ProcessPopover';
 import { ClipboardPicker } from '../tools/ClipboardPicker';
 import { SnippetPicker } from '../tools/SnippetPicker';
 import type { AppModel } from './app-model';
+import { TitleBar } from './TitleBar';
 
 export interface AppProps {
   readonly model: AppModel;
@@ -35,6 +35,15 @@ export function App({ model }: AppProps): ReactElement {
 
   return (
     <div className={model.windowKind === 'quake' ? 'app app--quake' : 'app'}>
+      {model.windowKind !== 'quake' && (
+        <TitleBar
+          labelFor={model.labelFor}
+          runCommand={actions.runCommand}
+          trailing={
+            <ProcessIndicator workspace={workspace} sessions={sessions} model={model.jobs} />
+          }
+        />
+      )}
       <TabBar
         workspace={workspace}
         sessions={sessions}
@@ -43,17 +52,6 @@ export function App({ model }: AppProps): ReactElement {
         renaming={renaming}
         windows={windows}
         newTabLabel={model.labelFor(CommandIds.tabNew)}
-        trailing={
-          <>
-            <ProcessIndicator workspace={workspace} sessions={sessions} model={model.jobs} />
-            <SettingsButton
-              label={model.labelFor(CommandIds.settingsOpen)}
-              onClick={() => {
-                actions.runCommand(CommandIds.settingsOpen);
-              }}
-            />
-          </>
-        }
       />
       {problems.length > 0 && (
         <ProblemsBanner problems={problems} onOpenSettings={actions.openSettingsFile} />
