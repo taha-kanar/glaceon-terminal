@@ -1,12 +1,9 @@
-import { createHash } from 'node:crypto';
-import { watch, type FSWatcher } from 'node:fs';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { basename, dirname } from 'node:path';
+import { dirname } from 'node:path';
 import type { WritableSettingsSource } from '@glaceon/application';
 import {
   err,
   ok,
-  toDisposable,
   type Disposable,
   type PartialSettings,
   type Result,
@@ -26,6 +23,7 @@ import {
   toPartialSettings,
   validateSetting,
 } from './settings-schema';
+import { contentHash, watchFileContent } from './file-watch';
 import { SETTINGS_TEMPLATE } from './settings-template';
 
 function lineOf(text: string, offset: number): number {
@@ -87,7 +85,7 @@ export class JsoncSettingsSource implements WritableSettingsSource {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return ok({});
       return err(`Cannot read ${this.#path}: ${(error as Error).message}`);
     }
-    this.#lastHash = createHash('sha1').update(text).digest('hex');
+    this.#lastHash = contentHash(text);
     return parseSettingsText(text);
   }
 
@@ -124,28 +122,10 @@ export class JsoncSettingsSource implements WritableSettingsSource {
   }
 
   watch(onChange: () => void): Disposable {
-    let timer: NodeJS.Timeout | undefined;
-    let watcher: FSWatcher | undefined;
-    const fire = (): void => {
-      void readFile(this.#path, 'utf8')
-        .then((text) => createHash('sha1').update(text).digest('hex'))
-        .catch(() => undefined)
-        .then((hash) => {
-          if (hash === undefined || hash !== this.#lastHash) onChange();
-        });
-    };
-    try {
-      watcher = watch(dirname(this.#path), (_event, filename) => {
-        if (filename !== null && filename !== basename(this.#path)) return;
-        clearTimeout(timer);
-        timer = setTimeout(fire, this.#debounceMs);
-      });
-    } catch {
-      watcher = undefined;
-    }
-    return toDisposable(() => {
-      clearTimeout(timer);
-      watcher?.close();
+    return watchFileContent(this.#path, {
+      debounceMs: this.#debounceMs,
+      lastHash: () => this.#lastHash,
+      onChange,
     });
   }
 }

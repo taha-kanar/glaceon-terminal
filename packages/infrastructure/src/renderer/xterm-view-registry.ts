@@ -13,9 +13,15 @@ export interface PaneFocusChange {
   readonly focused: boolean;
 }
 
+export interface PaneSelection {
+  readonly pane: PaneId;
+  readonly text: string;
+}
+
 interface Entry {
   readonly view: XtermTerminalView;
   readonly focus: Disposable;
+  readonly selection: Disposable;
 }
 
 /**
@@ -29,6 +35,7 @@ export class XtermViewRegistry implements TerminalViewRegistry, SearchTargets {
   readonly #hidden = new Set<PaneId>();
   readonly #focusChanged = new Emitter<PaneFocusChange>();
   readonly #linkActivated = new Emitter<PaneLinkActivation>();
+  readonly #selected = new Emitter<PaneSelection>();
   #options: XtermViewOptions;
 
   constructor(document: Document, options: XtermViewOptions) {
@@ -69,7 +76,8 @@ export class XtermViewRegistry implements TerminalViewRegistry, SearchTargets {
       },
     });
     const focus = view.onFocusChange((focused) => this.#focusChanged.emit({ pane, focused }));
-    this.#entries.set(pane, { view, focus });
+    const selection = view.onSelection((text) => this.#selected.emit({ pane, text }));
+    this.#entries.set(pane, { view, focus, selection });
     if (this.#hidden.has(pane)) view.setVisible(false);
     return { view, created: true };
   }
@@ -92,6 +100,7 @@ export class XtermViewRegistry implements TerminalViewRegistry, SearchTargets {
     if (entry === undefined) return;
     this.#entries.delete(pane);
     entry.focus.dispose();
+    entry.selection.dispose();
     entry.view.dispose();
     entry.view.element.remove();
   }
@@ -107,6 +116,10 @@ export class XtermViewRegistry implements TerminalViewRegistry, SearchTargets {
 
   onLinkActivated(listener: (activation: PaneLinkActivation) => void): Disposable {
     return this.#linkActivated.on(listener);
+  }
+
+  onSelection(listener: (selection: PaneSelection) => void): Disposable {
+    return this.#selected.on(listener);
   }
 
   onFocusChange(listener: (change: PaneFocusChange) => void): Disposable {

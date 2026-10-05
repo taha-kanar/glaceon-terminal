@@ -46,6 +46,11 @@ export const CommandIds = {
   searchPrevious: 'search.previous',
   searchClose: 'search.close',
   jobsToggle: 'jobs.toggle',
+  clipboardShowRing: 'clipboard.showRing',
+  clipboardPaste: 'clipboard.paste',
+  snippetsShow: 'snippets.show',
+  snippetsInsert: 'snippets.insert',
+  snippetsOpenFile: 'snippets.openFile',
 } as const;
 
 export type BuiltinCommandId = (typeof CommandIds)[keyof typeof CommandIds];

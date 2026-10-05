@@ -69,3 +69,6 @@ export {
 export { defaultShellProfile, FALLBACK_SHELL, type ShellProfile } from './pty-host/shell-profile';
 export type * from './quake/quake-ports';
 export * from './quake/quake-controller';
+export * from './clipboard/clipboard-ring-service';
+export * from './snippet/snippet-library';
+export * from './tools/tool-commands';

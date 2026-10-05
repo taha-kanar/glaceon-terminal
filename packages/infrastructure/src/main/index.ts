@@ -12,3 +12,5 @@ export { TerminalWindow, type RendererSource, type TerminalWindowOptions } from 
 export { hardenWebContents } from './web-contents-hardening';
 export { TabTransferCoordinator, type TransferWindow } from './tab-transfer-coordinator';
 export { decodeTabTransferRequest } from './tab-transfer-schema';
+export { JsoncSnippetSource, parseSnippetsText } from './jsonc-snippet-source';
+export { MemoryClipboard, SystemClipboard } from './clipboards';

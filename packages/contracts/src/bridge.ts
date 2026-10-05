@@ -1,4 +1,4 @@
-import type { PaneId, PaneNode, SessionId, Settings, TabColor } from '@glaceon/domain';
+import type { PaneId, PaneNode, SessionId, Settings, Snippet, TabColor } from '@glaceon/domain';
 
 /** Name of the API object the preload exposes on `window`. */
 export const BRIDGE_KEY = 'glaceon';
@@ -15,6 +15,11 @@ export interface SettingsSnapshot {
   readonly problems: readonly string[];
   /** Whether the quake shortcut could be registered (main fills this in). */
   readonly quake?: QuakeStatus;
+}
+
+export interface SnippetsSnapshot {
+  readonly snippets: readonly Snippet[];
+  readonly problem?: string;
 }
 
 export interface QuakeStatus {
@@ -115,6 +120,14 @@ export interface GlaceonBridge {
   /** Tells main the window is wired up; returns how many imported tabs are on their way. */
   windowReady(): Promise<number>;
   onWindowsChanged(listener: (windows: readonly WindowSummaryWire[]) => void): Unsubscribe;
+  getSnippets(): Promise<SnippetsSnapshot>;
+  onSnippetsChanged(listener: (snapshot: SnippetsSnapshot) => void): Unsubscribe;
+  openSnippetsFile(): void;
+  /** Newest first, at most ten. */
+  getClipboardRing(): Promise<readonly string[]>;
+  onClipboardRingChanged(listener: (ring: readonly string[]) => void): Unsubscribe;
+  /** Copies to the system clipboard (and the ring). */
+  writeClipboard(text: string): void;
   newWindow(): void;
   /** Closes this window without asking again (the renderer already confirmed). */
   closeWindow(): void;

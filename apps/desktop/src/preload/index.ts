@@ -12,6 +12,7 @@ import {
   type OperationResult,
   type SettingsSnapshot,
   type SettingsUpdateResult,
+  type SnippetsSnapshot,
   type TabImportRequest,
   type TabImportResult,
   type WindowSummaryWire,
@@ -75,6 +76,23 @@ const bridge: GlaceonBridge = {
     listen(RendererChannel.windowsChanged, (payload) => {
       listener(payload as readonly WindowSummaryWire[]);
     }),
+  getSnippets: () => ipcRenderer.invoke(MainInvokeChannel.snippetsGet) as Promise<SnippetsSnapshot>,
+  onSnippetsChanged: (listener) =>
+    listen(RendererChannel.snippetsChanged, (payload) => {
+      listener(payload as SnippetsSnapshot);
+    }),
+  openSnippetsFile: () => {
+    ipcRenderer.send(MainSendChannel.snippetsOpenFile);
+  },
+  getClipboardRing: () =>
+    ipcRenderer.invoke(MainInvokeChannel.clipboardRingGet) as Promise<readonly string[]>,
+  onClipboardRingChanged: (listener) =>
+    listen(RendererChannel.clipboardRingChanged, (payload) => {
+      listener(payload as readonly string[]);
+    }),
+  writeClipboard: (text) => {
+    ipcRenderer.send(MainSendChannel.clipboardWrite, text);
+  },
   newWindow: () => {
     ipcRenderer.send(MainSendChannel.windowNew);
   },

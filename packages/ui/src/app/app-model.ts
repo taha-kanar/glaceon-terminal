@@ -15,6 +15,7 @@ import type { SearchActions } from '../search/SearchBar';
 import type { SettingsPanelModel } from '../settings/settings-panel-model';
 import type { ArrangeActions } from '../tabs/arrange-actions';
 import type { JobsModel } from '../jobs/jobs-model';
+import type { ToolsModel } from '../tools/tools-model';
 
 /** Lets a pane slot host the terminal view of a pane. Returns the detach function. */
 export type TerminalSlotBinder = (pane: PaneId, element: HTMLElement) => () => void;
@@ -55,6 +56,7 @@ export interface AppModel {
   readonly settingsPanel: SettingsPanelModel;
   readonly search: SearchActions & { readonly state: ReadableStore<SearchState | undefined> };
   readonly jobs: JobsModel;
+  readonly tools: ToolsModel;
   readonly toasts: {
     readonly items: ReadableStore<readonly Toast[]>;
     readonly dismiss: (id: number) => void;

@@ -42,3 +42,5 @@ export * from './keybinding/keybinding-edits';
 export * from './links/links';
 export * from './editor/editor-command';
 export * from './process/process-table';
+export * from './snippet/snippet';
+export * from './clipboard/clipboard-ring';

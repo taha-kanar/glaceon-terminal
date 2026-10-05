@@ -9,6 +9,7 @@ export {
   type SettingsSnapshot,
   type SettingsUpdateRequest,
   type SettingsUpdateResult,
+  type SnippetsSnapshot,
   type PaneTransferWire,
   type QuakeStatus,
   type TabImportRequest,

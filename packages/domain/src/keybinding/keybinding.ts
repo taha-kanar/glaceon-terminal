@@ -53,6 +53,8 @@ const BINDINGS: readonly KeybindingEntry[] = [
   { key: 'cmd+shift+g', command: C.searchPrevious },
   { key: 'escape', command: C.searchClose, when: 'searchOpen' },
   { key: 'cmd+shift+j', command: C.jobsToggle },
+  { key: 'cmd+shift+v', command: C.clipboardShowRing },
+  { key: 'cmd+shift+s', command: C.snippetsShow },
 ];
 
 /** Commands that keep working while the palette or settings panel is open. */
@@ -60,6 +62,8 @@ const ALWAYS_AVAILABLE = new Set<string>([
   C.paletteToggle,
   C.settingsOpen,
   C.jobsToggle,
+  C.clipboardShowRing,
+  C.snippetsShow,
   C.windowNew,
   C.windowClose,
   C.fontIncrease,

@@ -161,6 +161,10 @@ export class SessionManager {
     entry.view.focus();
   }
 
+  paste(pane: PaneId, text: string): void {
+    this.#panes.get(pane)?.view.paste(text);
+  }
+
   clear(pane: PaneId): void {
     this.#panes.get(pane)?.view.clear();
   }

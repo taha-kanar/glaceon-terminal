@@ -8,6 +8,8 @@ export const MainInvokeChannel = {
   tabTransfer: 'tab:transfer',
   /** The renderer is wired up; replies how many tabs are waiting to be imported. */
   windowReady: 'window:ready',
+  snippetsGet: 'snippets:get',
+  clipboardRingGet: 'clipboard:ring',
 } as const;
 
 /** send() channels handled by the main process (renderer → main, fire and forget). */
@@ -16,6 +18,8 @@ export const MainSendChannel = {
   windowClose: 'window:close',
   settingsOpenFile: 'settings:open-file',
   tabImportResult: 'tab:import-result',
+  snippetsOpenFile: 'snippets:open-file',
+  clipboardWrite: 'clipboard:write',
 } as const;
 
 /** Channels main pushes to renderers. */
@@ -28,6 +32,8 @@ export const RendererChannel = {
   /** A tab moved here from another window. */
   tabImport: 'tab:import',
   windowsChanged: 'windows:changed',
+  snippetsChanged: 'snippets:changed',
+  clipboardRingChanged: 'clipboard:ring-changed',
 } as const;
 
 /** Channel on which main delivers a window's pty MessagePort to its preload. */

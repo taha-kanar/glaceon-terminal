@@ -52,6 +52,7 @@ import {
   settingsPanelModelFor,
 } from './ui-adapters';
 import { createE2EProbe } from './e2e-probe';
+import { createRendererTools } from './tools';
 import { installKeyboardHandler } from './keyboard';
 import { applyTheme } from './theme-applier';
 import { viewOptions } from './view-options';
@@ -152,6 +153,15 @@ export async function createRendererCompositionRoot(
   registry.registerContribution(transferCommands);
   const arrangementCommands = new ArrangementCommands(arrangement);
   registry.registerContribution(arrangementCommands);
+  const tools = await createRendererTools({
+    bridge,
+    overlay,
+    sessions,
+    workspace,
+    views,
+    settings,
+  });
+  registry.registerContribution(tools.commands);
   registry.onDidFail(({ commandId, error }) => {
     console.error(`[renderer] command ${commandId} failed`, error);
   });
@@ -165,7 +175,7 @@ export async function createRendererCompositionRoot(
   });
   const palette = new PaletteService({
     registry,
-    providers: [themeCommands, arrangementCommands, transferCommands],
+    providers: [themeCommands, arrangementCommands, transferCommands, tools.commands],
     keybindings: keybindings.resolver,
     overlay,
   });
@@ -261,6 +271,7 @@ export async function createRendererCompositionRoot(
     }),
     search: searchModelFor(search),
     jobs: jobsModelFor(jobs, workspace),
+    tools: tools.model,
     toasts: { items: toasts.toasts, dismiss: (id) => toasts.dismiss(id) },
   };
 

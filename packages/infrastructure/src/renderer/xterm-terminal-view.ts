@@ -90,6 +90,19 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
     this.#terminal.write(chunk, written);
   }
 
+  paste(text: string): void {
+    this.#terminal.paste(text);
+  }
+
+  /** Fires with the selected text whenever a selection is made (for copy-on-select). */
+  onSelection(listener: (text: string) => void): Disposable {
+    const subscription = this.#terminal.onSelectionChange(() => {
+      const text = this.#terminal.getSelection();
+      if (text !== '') listener(text);
+    });
+    return toDisposable(() => subscription.dispose());
+  }
+
   restore(snapshot: string): void {
     this.#terminal.write(snapshot);
   }

@@ -29,6 +29,7 @@ import {
 } from '@glaceon/infrastructure/main';
 import { app, BrowserWindow, ipcMain, Menu, shell, type IpcMainEvent } from 'electron';
 import { createQuake } from './quake';
+import { createTools } from './tools';
 
 export interface MainCompositionRoot {
   start(): Promise<void>;
@@ -53,6 +54,7 @@ export function createMainCompositionRoot(): MainCompositionRoot {
   const windows = new Map<number, TerminalWindow>();
   const settingsSource = new JsoncSettingsSource({ path: join(configDirectory(), 'config.json') });
   const settings = new SettingsService(settingsSource);
+  const tools = createTools({ configDirectory: configDirectory(), e2e });
   const ptyHost = new PtyHostSupervisor({
     modulePath: join(import.meta.dirname, 'pty-host.js'),
     serviceName: 'Glaceon PTY Host',
@@ -65,6 +67,10 @@ export function createMainCompositionRoot(): MainCompositionRoot {
   const snapshot = (): SettingsSnapshot => {
     const status = quake?.status.get();
     return status === undefined ? settings.state.get() : { ...settings.state.get(), quake: status };
+  };
+  const broadcast = (channel: string, payload: () => unknown): void => {
+    for (const window of windows.values())
+      window.browserWindow.webContents.send(channel, payload());
   };
   const broadcastSettings = (): void => {
     for (const window of windows.values()) {
@@ -221,6 +227,7 @@ export function createMainCompositionRoot(): MainCompositionRoot {
         console.error('[main] cannot create settings file', error);
       });
       await settings.start();
+      await tools.start(broadcast);
       settings.state.subscribe(() => {
         installMenu();
         broadcastSettings();
@@ -247,6 +254,7 @@ export function createMainCompositionRoot(): MainCompositionRoot {
       for (const channel of Object.values(MainInvokeChannel)) ipcMain.removeHandler(channel);
       for (const channel of Object.values(MainSendChannel)) ipcMain.removeAllListeners(channel);
       quake?.dispose();
+      tools.dispose();
       settings.dispose();
       ptyHost.stop();
     },

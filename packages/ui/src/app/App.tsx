@@ -12,6 +12,8 @@ import { SettingsPanel } from '../settings/SettingsPanel';
 import { TabBar } from '../tabs/TabBar';
 import { JobsPanel } from '../jobs/JobsPanel';
 import { ProcessIndicator } from '../jobs/ProcessPopover';
+import { ClipboardPicker } from '../tools/ClipboardPicker';
+import { SnippetPicker } from '../tools/SnippetPicker';
 import type { AppModel } from './app-model';
 
 export interface AppProps {
@@ -76,6 +78,12 @@ export function App({ model }: AppProps): ReactElement {
           model={model.jobs}
           onClose={model.closeOverlay}
         />
+      )}
+      {overlay?.kind === 'clipboard' && (
+        <ClipboardPicker model={model.tools} onClose={model.closeOverlay} />
+      )}
+      {overlay?.kind === 'snippets' && (
+        <SnippetPicker model={model.tools} initial={overlay.target} onClose={model.closeOverlay} />
       )}
       {confirmation !== undefined && (
         <ConfirmDialog request={confirmation} onAnswer={actions.answerConfirmation} />
