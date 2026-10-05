@@ -15,7 +15,8 @@
     "package:dmg": "electron-vite build && electron-builder --mac dmg --config electron-builder.yml",
     "typecheck": "tsc -p tsconfig.json && tsc -p src/main && tsc -p src/preload && tsc -p src/pty-host && tsc -p src/renderer && tsc -p e2e",
     "e2e": "electron-vite build && playwright test -c e2e/playwright.config.ts",
-    "e2e:packaged": "pnpm package && GLACEON_E2E_EXECUTABLE=\"$PWD/dist/mac-arm64/Glaceon Terminal.app/Contents/MacOS/Glaceon Terminal\" playwright test -c e2e/playwright.config.ts"
+    "e2e:packaged": "pnpm package && GLACEON_E2E_EXECUTABLE=\"$PWD/dist.noindex/mac-arm64/Glaceon Terminal.app/Contents/MacOS/Glaceon Terminal\" playwright test -c e2e/playwright.config.ts",
+    "bench": "electron-vite build && GLACEON_BENCH=1 playwright test -c e2e/playwright.config.ts bench"
   },
   "dependencies": {
     "node-pty": "^1.1.0"

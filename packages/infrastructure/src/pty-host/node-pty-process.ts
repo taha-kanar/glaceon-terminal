@@ -2,6 +2,8 @@ import type { PtyProcess, PtyProcessFactory, PtySpawnOptions } from '@glaceon/ap
 import { toDisposable, type Disposable, type PtyExit, type TerminalSize } from '@glaceon/domain';
 import { spawn, type IPty } from 'node-pty';
 
+const SPAWN_HELPER = 'spawn-helper';
+
 /** Copies into an exactly sized buffer so structured cloning never drags a pooled slab along. */
 function toBytes(data: string | Uint8Array): Uint8Array {
   return typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
@@ -22,10 +24,12 @@ class NodePtyProcess implements PtyProcess {
     return this.#pty.pid;
   }
 
+  /** Empty while the shell has not started yet: node-pty's `spawn-helper` runs until the exec. */
   get foregroundProcess(): string {
     if (this.#exited) return '';
     try {
-      return this.#pty.process;
+      const name = this.#pty.process;
+      return name === SPAWN_HELPER ? '' : name;
     } catch {
       return '';
     }

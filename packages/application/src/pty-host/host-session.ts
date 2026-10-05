@@ -34,7 +34,6 @@ export class HostSession {
   #output: SessionOutput;
   #onExit: (exit: PtyExit) => void;
   #foreground: string;
-  #shellName: Promise<string> | undefined;
   #exited = false;
 
   constructor(id: SessionId, process: PtyProcess, deps: HostSessionDeps) {
@@ -107,6 +106,8 @@ export class HostSession {
   /**
    * Reports the foreground process when it changed since the last check. It is busy unless it
    * is the shell itself (compared by the shell process's real name: `/bin/sh` runs `bash`).
+   * The name is looked up on every change, never cached: a shell that is still exec'ing
+   * (`sh` → `bash`) would otherwise count as busy for the rest of its life.
    */
   checkForeground(): void {
     const name = this.#process.foregroundProcess;
@@ -114,16 +115,22 @@ export class HostSession {
     this.#foreground = name;
     void this.#resolveShellName().then((shell) => {
       if (this.#exited || this.#foreground !== name) return;
+      // The two reads are not atomic: a shell exec-ing during the lookup (`sh` → `bash`) gives
+      // a stale name here. Look again instead of reporting a false "busy".
+      if (this.#process.foregroundProcess !== name) {
+        this.#foreground = '';
+        this.checkForeground();
+        return;
+      }
       this.#output.process(this.#id, { name, busy: name !== shell });
     });
   }
 
   #resolveShellName(): Promise<string> {
-    this.#shellName ??= this.#deps.inspector
+    return this.#deps.inspector
       .nameOf(this.#process.pid)
       .catch(() => undefined)
       .then((name) => name ?? this.#deps.shellName);
-    return this.#shellName;
   }
 
   #exit(exit: PtyExit): void {

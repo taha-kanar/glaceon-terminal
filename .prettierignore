@@ -1,7 +1,6 @@
-archive/
 pnpm-lock.yaml
 out/
-dist/
+dist*/
 coverage/
 test-results/
 playwright-report/

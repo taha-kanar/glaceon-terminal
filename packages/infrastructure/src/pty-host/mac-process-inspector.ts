@@ -9,7 +9,7 @@ export function parseLsofCwd(output: string): string | undefined {
   return undefined;
 }
 
-/** `ps -o comm=` prints a path (`/bin/zsh`) or a login-shell name (`-zsh`); keep the bare name. */
+/** `ps -o ucomm=` may print a path (`/bin/zsh`) or a login-shell name (`-zsh`); keep the bare name. */
 export function parsePsCommand(output: string): string | undefined {
   const command = output.trim().replace(/^-/, '');
   if (command === '') return undefined;
@@ -46,7 +46,9 @@ export class MacProcessInspector implements ProcessInspector {
   }
 
   async nameOf(pid: number): Promise<string | undefined> {
-    const output = await run('/bin/ps', ['-o', 'comm=', '-p', String(pid)], this.#timeoutMs);
+    // `ucomm` is the kernel's process name, the one node-pty reports for the foreground process.
+    // `comm` follows argv[0] instead: `/bin/sh` for a shell that has become `bash`.
+    const output = await run('/bin/ps', ['-o', 'ucomm=', '-p', String(pid)], this.#timeoutMs);
     return output === undefined ? undefined : parsePsCommand(output);
   }
 }

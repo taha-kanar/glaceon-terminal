@@ -120,10 +120,9 @@ const TEST_POLICIES = [
 export default defineConfig(
   {
     ignores: [
-      'archive/**',
       '**/node_modules/**',
       '**/out/**',
-      '**/dist/**',
+      '**/dist*/**',
       '**/coverage/**',
       '**/test-results/**',
       '**/playwright-report/**',

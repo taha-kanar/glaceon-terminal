@@ -43,6 +43,18 @@ function rendererSource(): RendererSource {
     : { url: devServerUrl };
 }
 
+function installAboutPanel(): void {
+  app.setAboutPanelOptions({
+    applicationName: app.name,
+    applicationVersion: app.getVersion(),
+    version: `Electron ${process.versions.electron}`,
+    copyright: '© 2026 Taha Kanar',
+    credits: 'Built with xterm.js, node-pty, React and Electron.',
+  });
+  // Packaged builds take the icon from the bundle; dev runs would show Electron's.
+  if (!app.isPackaged) app.dock?.setIcon(join(import.meta.dirname, '../../build/icon.png'));
+}
+
 function configDirectory(): string {
   return process.env['GLACEON_CONFIG_DIR'] ?? join(homedir(), '.config', 'glaceon');
 }
@@ -222,6 +234,7 @@ export function createMainCompositionRoot(): MainCompositionRoot {
   return {
     async start() {
       if (hidden) app.dock?.hide();
+      else installAboutPanel();
       ptyHost.start();
       await settingsSource.ensureExists().catch((error: unknown) => {
         console.error('[main] cannot create settings file', error);

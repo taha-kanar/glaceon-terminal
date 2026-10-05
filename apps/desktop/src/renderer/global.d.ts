@@ -43,4 +43,15 @@ export interface E2EProbe {
   fontSize(): number;
   rendererKind(pane: string): 'webgl' | 'dom' | undefined;
   locateText(text: string): { x: number; y: number } | undefined;
+  /** Counts of live objects, for leak tests. */
+  resources(): ProbeResources;
+}
+
+export interface ProbeResources {
+  readonly views: number;
+  readonly sessions: number;
+  readonly domNodes: number;
+  readonly webglViews: number;
+  /** Used JS heap after a forced GC (needs `--js-flags=--expose-gc`), in bytes. */
+  readonly heap?: number;
 }

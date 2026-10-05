@@ -19,7 +19,8 @@
     "test:watch": "vitest",
     "e2e": "pnpm --filter @glaceon/desktop e2e",
     "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm e2e",
-    "e2e:packaged": "pnpm --filter @glaceon/desktop e2e:packaged"
+    "e2e:packaged": "pnpm --filter @glaceon/desktop e2e:packaged",
+    "bench": "pnpm --filter @glaceon/desktop bench"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

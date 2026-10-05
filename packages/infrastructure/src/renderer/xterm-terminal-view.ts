@@ -34,8 +34,16 @@ export interface XtermViewOptions {
   readonly searchColors: { readonly match: string; readonly active: string };
 }
 
+/** Hands out the window's limited WebGL contexts. */
+export interface WebglBudget {
+  /** False when no context is left; the view then renders with the DOM renderer. */
+  acquire(): boolean;
+  release(): void;
+}
+
 export interface XtermViewHooks {
   readonly onLink: LinkActivation;
+  readonly webgl: WebglBudget;
 }
 
 /** TerminalView backed by xterm.js with the WebGL renderer (DOM renderer as fallback). */
@@ -50,6 +58,7 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
   readonly #resizeObserver: ResizeObserver;
   readonly #focus = new Emitter<boolean>();
   readonly #cleanup: (() => void)[] = [];
+  readonly #budget: WebglBudget;
   #webgl: WebglAddon | undefined;
   #visible = true;
   #pendingFit = 0;
@@ -57,8 +66,9 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
   /** `host` must already be in the document so the renderer can measure the font. */
   constructor(host: HTMLElement, options: XtermViewOptions & XtermViewHooks) {
     this.element = host;
-    const { searchColors, onLink, ...terminalOptions } = options;
+    const { searchColors, onLink, webgl, ...terminalOptions } = options;
     this.#searchColors = searchColors;
+    this.#budget = webgl;
     this.#terminal = new Terminal({
       allowProposedApi: true,
       allowTransparency: true,
@@ -223,9 +233,13 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
       this.#attachWebgl();
       this.#scheduleFit();
     } else {
-      this.#webgl?.dispose();
-      this.#webgl = undefined;
+      this.#detachWebgl();
     }
+  }
+
+  /** Switches to WebGL if this view is visible and still on the DOM renderer. */
+  upgradeRenderer(): void {
+    if (this.#visible) this.#attachWebgl();
   }
 
   get rendererKind(): 'webgl' | 'dom' {
@@ -260,7 +274,7 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
     this.#resizeObserver.disconnect();
     for (const cleanup of this.#cleanup) cleanup();
     this.#focus.clear();
-    this.#webgl?.dispose();
+    this.#detachWebgl();
     this.#terminal.dispose();
   }
 
@@ -285,18 +299,25 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
   }
 
   #attachWebgl(): void {
-    if (this.#webgl !== undefined) return;
+    if (this.#webgl !== undefined || !this.#budget.acquire()) return;
     try {
       const webgl = new WebglAddon();
       webgl.onContextLoss(() => {
-        webgl.dispose();
-        if (this.#webgl === webgl) this.#webgl = undefined;
+        if (this.#webgl === webgl) this.#detachWebgl();
       });
       this.#terminal.loadAddon(webgl);
       this.#webgl = webgl;
     } catch {
       // No WebGL2 available: xterm keeps using its DOM renderer.
       this.#webgl = undefined;
+      this.#budget.release();
     }
+  }
+
+  #detachWebgl(): void {
+    if (this.#webgl === undefined) return;
+    this.#webgl.dispose();
+    this.#webgl = undefined;
+    this.#budget.release();
   }
 }

@@ -1,7 +1,8 @@
 appId: com.glaceon.terminal
 productName: Glaceon Terminal
 directories:
-  output: dist
+  # ".noindex" keeps Spotlight and Launchpad from listing the build next to /Applications.
+  output: dist.noindex
   buildResources: build
 files:
   - out/**
@@ -15,6 +16,7 @@ mac:
     - target: dir
       arch: arm64
   category: public.app-category.developer-tools
+  icon: build/icon.icns
   # Personal, unsigned build.
   identity: null
   hardenedRuntime: false

@@ -35,6 +35,15 @@ interface Probe {
   problems(): string[];
   fontSize(): number;
   locateText(text: string): { x: number; y: number } | undefined;
+  resources(): ProbeResources;
+}
+
+export interface ProbeResources {
+  readonly views: number;
+  readonly sessions: number;
+  readonly domNodes: number;
+  readonly webglViews: number;
+  readonly heap?: number;
 }
 
 declare global {
@@ -52,6 +61,7 @@ export interface GlaceonWindow {
   processName(pane?: string): Promise<string | undefined>;
   problems(): Promise<string[]>;
   fontSize(): Promise<number>;
+  resources(): Promise<ProbeResources>;
   /** ⌘-clicks the last occurrence of `text` in the active pane. */
   commandClick(text: string): Promise<void>;
   type(text: string): Promise<void>;
@@ -74,6 +84,7 @@ export function wrap(page: Page): GlaceonWindow {
     },
     problems: () => page.evaluate(() => window.__glaceonE2E.problems()),
     fontSize: () => page.evaluate(() => window.__glaceonE2E.fontSize()),
+    resources: () => page.evaluate(() => window.__glaceonE2E.resources()),
     commandClick: async (text) => {
       const point = await page.evaluate((t) => window.__glaceonE2E.locateText(t), text);
       if (point === undefined) throw new Error(`"${text}" is not on screen`);
@@ -98,6 +109,9 @@ export function wrap(page: Page): GlaceonWindow {
   return self;
 }
 
+/** Lets leak tests force a garbage collection before measuring the heap. */
+const GC_FLAG = '--js-flags=--expose-gc';
+
 /**
  * Dev builds run from `out/`. Setting GLACEON_E2E_EXECUTABLE runs the packaged app instead,
  * with the bare environment Finder gives an app (no LANG, minimal PATH).
@@ -114,11 +128,11 @@ function launchOptions(home: string, configDir: string): Parameters<typeof elect
     ENV: '',
   };
   if (executablePath === undefined) {
-    return { args: [appDirectory], env: { ...process.env, ...shared } };
+    return { args: [GC_FLAG, appDirectory], env: { ...process.env, ...shared } };
   }
   return {
     executablePath,
-    args: [],
+    args: [GC_FLAG],
     env: {
       ...shared,
       PATH: '/usr/bin:/bin:/usr/sbin:/sbin',

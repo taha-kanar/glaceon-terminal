@@ -9,7 +9,7 @@ import {
   type Workspace,
 } from '@glaceon/domain';
 import type { XtermViewRegistry } from '@glaceon/infrastructure/renderer';
-import type { E2EProbe } from './global';
+import type { E2EProbe, ProbeResources } from './global';
 
 export interface ProbeSources {
   readonly workspace: ReadableStore<Workspace>;
@@ -17,6 +17,24 @@ export interface ProbeSources {
   readonly views: XtermViewRegistry;
   readonly problems: ReadableStore<readonly string[]>;
   readonly fontSize: () => number;
+}
+
+interface GcPerformance {
+  readonly memory?: { readonly usedJSHeapSize: number };
+}
+
+function resources(views: XtermViewRegistry, sessions: SessionManager): ProbeResources {
+  const gc = (globalThis as { gc?: () => void }).gc;
+  gc?.();
+  const heap = (performance as GcPerformance).memory?.usedJSHeapSize;
+  const panes = views.panes();
+  return {
+    views: views.size,
+    sessions: sessions.info.get().size,
+    domNodes: document.getElementsByTagName('*').length,
+    webglViews: panes.filter((pane) => views.get(pane)?.rendererKind === 'webgl').length,
+    ...(gc === undefined || heap === undefined ? {} : { heap }),
+  };
 }
 
 /** Read-only view of the window state for Playwright. */
@@ -63,5 +81,6 @@ export function createE2EProbe(sources: ProbeSources): E2EProbe {
       const id = resolve(undefined);
       return id === undefined ? undefined : views.get(id)?.locateText(text);
     },
+    resources: () => resources(views, sessions),
   };
 }

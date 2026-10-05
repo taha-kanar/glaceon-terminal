@@ -8,6 +8,8 @@ export interface MenuCommand {
   readonly args?: string | number;
 }
 
+type MenuEntry = MenuCommand | 'separator';
+
 export interface ApplicationMenuOptions {
   readonly appName: string;
   readonly isDevelopment: boolean;
@@ -16,19 +18,46 @@ export interface ApplicationMenuOptions {
   readonly run: (command: string, args?: string | number) => void;
 }
 
-const SHELL_MENU: readonly (MenuCommand | 'separator')[] = [
+const APP_MENU: readonly MenuEntry[] = [
+  { label: 'Settings…', command: C.settingsOpen },
+  { label: 'Open Settings File', command: C.settingsOpenFile },
+  { label: 'Open Snippets File', command: C.snippetsOpenFile },
+];
+
+const SHELL_MENU: readonly MenuEntry[] = [
   { label: 'New Tab', command: C.tabNew },
   { label: 'New Window', command: C.windowNew },
   'separator',
   { label: 'Split Right', command: C.paneSplitRight },
   { label: 'Split Down', command: C.paneSplitDown },
   'separator',
+  { label: 'Rename Tab…', command: C.tabRename },
+  { label: 'Pin / Unpin Tab', command: C.tabTogglePin },
+  { label: 'Lock / Unlock Tab', command: C.tabToggleLock },
+  { label: 'Move Pane to New Tab', command: C.paneMoveToNewTab },
+  { label: 'Move Tab to New Window', command: C.tabMoveToNewWindow },
+  'separator',
   { label: 'Close Pane', command: C.paneClose },
   { label: 'Close Tab', command: C.tabClose },
   { label: 'Close Window', command: C.windowClose },
 ];
 
-const VIEW_MENU: readonly (MenuCommand | 'separator')[] = [
+const EDIT_TOOLS: readonly MenuEntry[] = [
+  { label: 'Find…', command: C.searchOpen },
+  { label: 'Find Next', command: C.searchNext },
+  { label: 'Find Previous', command: C.searchPrevious },
+  'separator',
+  { label: 'Clipboard History…', command: C.clipboardShowRing },
+  { label: 'Snippets…', command: C.snippetsShow },
+];
+
+const VIEW_MENU: readonly MenuEntry[] = [
+  { label: 'Command Palette…', command: C.paletteToggle },
+  { label: 'Job Tracker', command: C.jobsToggle },
+  'separator',
+  { label: 'Select Theme…', command: C.themeSelect },
+  { label: 'Edit Theme…', command: C.themeEdit },
+  'separator',
   { label: 'Toggle Pane Zoom', command: C.paneToggleZoom },
   { label: 'Equalize Panes', command: C.paneEqualize },
   'separator',
@@ -44,13 +73,23 @@ const VIEW_MENU: readonly (MenuCommand | 'separator')[] = [
   { label: 'Clear Terminal', command: C.terminalClear },
 ];
 
+/** Every command the menu bar can run (exported for tests). */
+export const MENU_COMMANDS: readonly MenuCommand[] = [
+  ...APP_MENU,
+  ...SHELL_MENU,
+  ...EDIT_TOOLS,
+  ...VIEW_MENU,
+].filter((entry): entry is MenuCommand => entry !== 'separator');
+
 /**
- * The macOS menu bar. Command accelerators are labels only (`registerAccelerator: false`):
+ * The menu bar template. Command accelerators are labels only (`registerAccelerator: false`):
  * the renderer's keybinding service handles the keys, so user remaps work and nothing fires twice.
  * Clipboard and app items keep their native roles.
  */
-export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
-  const item = (entry: MenuCommand | 'separator'): MenuItemConstructorOptions => {
+export function applicationMenuTemplate(
+  options: ApplicationMenuOptions,
+): MenuItemConstructorOptions[] {
+  const item = (entry: MenuEntry): MenuItemConstructorOptions => {
     if (entry === 'separator') return { type: 'separator' };
     const chord = options.chordFor(entry.command, entry.args);
     return {
@@ -62,14 +101,16 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
       },
     };
   };
-  const template: MenuItemConstructorOptions[] = [
+  const developer: MenuItemConstructorOptions[] = options.isDevelopment
+    ? [{ type: 'separator' }, { role: 'toggleDevTools' }, { role: 'reload' }]
+    : [];
+  return [
     {
       label: options.appName,
       submenu: [
         { role: 'about' },
         { type: 'separator' },
-        item({ label: 'Settings…', command: C.settingsOpen }),
-        item({ label: 'Open Settings File', command: C.settingsOpenFile }),
+        ...APP_MENU.map(item),
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
@@ -91,24 +132,24 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
         { role: 'copy' },
         { role: 'paste' },
         { role: 'selectAll' },
+        { type: 'separator' },
+        ...EDIT_TOOLS.map(item),
       ],
     },
     {
       label: 'View',
       submenu: [
         ...VIEW_MENU.map(item),
-        ...(options.isDevelopment
-          ? [
-              { type: 'separator' as const },
-              { role: 'toggleDevTools' as const },
-              { role: 'reload' as const },
-            ]
-          : []),
+        ...developer,
         { type: 'separator' },
         { role: 'togglefullscreen' },
       ],
     },
     { role: 'windowMenu' },
+    { role: 'help', submenu: [] },
   ];
-  return Menu.buildFromTemplate(template);
+}
+
+export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
+  return Menu.buildFromTemplate(applicationMenuTemplate(options));
 }

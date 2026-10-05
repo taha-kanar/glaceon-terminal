@@ -1,5 +1,6 @@
 import type { PtyExit } from '@glaceon/domain';
 import { describe, expect, it } from 'vitest';
+import { MacProcessInspector } from './mac-process-inspector';
 import { NodePtyProcessFactory } from './node-pty-process';
 
 const factory = new NodePtyProcessFactory();
@@ -66,5 +67,16 @@ describe('NodePtyProcess foreground and flow control', () => {
     expect(ptyProcess.foregroundProcess).toBe('');
     ptyProcess.pause();
     ptyProcess.resume();
+  });
+
+  it('names an idle shell the way the process inspector does', async () => {
+    // macOS /bin/sh becomes bash under the same pid; argv[0] still says /bin/sh.
+    const ptyProcess = factory.spawn({ ...base, file: '/bin/sh', args: [] });
+    await expect.poll(() => ptyProcess.foregroundProcess).not.toBe('');
+    const name = await new MacProcessInspector().nameOf(ptyProcess.pid);
+    expect(name).toBe(ptyProcess.foregroundProcess);
+    const exited = new Promise<PtyExit>((resolve) => ptyProcess.onExit(resolve));
+    ptyProcess.kill();
+    await exited;
   });
 });

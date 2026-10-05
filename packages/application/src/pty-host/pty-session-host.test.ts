@@ -255,6 +255,41 @@ describe('HostConnection output', () => {
     expect(output.foreground.map((p) => p.busy)).toEqual([false, true, false]);
   });
 
+  it('does not keep the name a shell had before it exec-ed into another one', async () => {
+    const { processes, host, scheduler, inspector } = setup();
+    const output = new RecordingOutput();
+    host.openConnection(output).spawn({ sessionId: asSessionId('a'), size });
+    const target = processes.processes[0]!;
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+    inspector.names.set(1000, 'sh');
+    target.foregroundProcess = 'sh';
+    scheduler.advance(1000);
+    await settle();
+    // macOS /bin/sh execs bash under the same pid.
+    inspector.names.set(1000, 'bash');
+    target.foregroundProcess = 'bash';
+    scheduler.advance(1000);
+    await settle();
+    expect(output.foreground.map(({ name, busy }) => [name, busy])).toEqual([
+      ['sh', false],
+      ['bash', false],
+    ]);
+  });
+
+  it('looks again when the foreground changes while the shell name is looked up', async () => {
+    const { processes, host, scheduler, inspector } = setup();
+    const output = new RecordingOutput();
+    host.openConnection(output).spawn({ sessionId: asSessionId('a'), size });
+    const target = processes.processes[0]!;
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+    target.foregroundProcess = 'sh';
+    inspector.names.set(1000, 'bash');
+    scheduler.advance(1000);
+    target.foregroundProcess = 'bash';
+    await settle();
+    expect(output.foreground.map(({ name, busy }) => [name, busy])).toEqual([['bash', false]]);
+  });
+
   it('falls back to the shell file name when the shell process cannot be inspected', async () => {
     const { processes, host, scheduler } = setup();
     const output = new RecordingOutput();

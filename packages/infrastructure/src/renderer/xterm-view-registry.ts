@@ -18,6 +18,12 @@ export interface PaneSelection {
   readonly text: string;
 }
 
+/**
+ * WebGL contexts a window may hold. Chromium allows 16 and silently drops the oldest beyond
+ * that (leaving a blank pane for seconds); staying below keeps every pane drawn.
+ */
+export const WEBGL_CONTEXT_BUDGET = 12;
+
 interface Entry {
   readonly view: XtermTerminalView;
   readonly focus: Disposable;
@@ -37,10 +43,30 @@ export class XtermViewRegistry implements TerminalViewRegistry, SearchTargets {
   readonly #linkActivated = new Emitter<PaneLinkActivation>();
   readonly #selected = new Emitter<PaneSelection>();
   #options: XtermViewOptions;
+  readonly #budget: number;
+  #contexts = 0;
+  readonly #webgl = {
+    acquire: (): boolean => {
+      if (this.#contexts >= this.#budget) return false;
+      this.#contexts++;
+      return true;
+    },
+    release: (): void => {
+      this.#contexts--;
+      // Hand the freed context to a visible pane that had to fall back to the DOM renderer.
+      queueMicrotask(() => {
+        for (const pane of this.#entries.keys()) {
+          if (this.#contexts >= this.#budget) return;
+          if (!this.#hidden.has(pane)) this.#entries.get(pane)?.view.upgradeRenderer();
+        }
+      });
+    },
+  };
 
-  constructor(document: Document, options: XtermViewOptions) {
+  constructor(document: Document, options: XtermViewOptions, budget = WEBGL_CONTEXT_BUDGET) {
     this.#document = document;
     this.#options = options;
+    this.#budget = budget;
   }
 
   get size(): number {
@@ -71,6 +97,7 @@ export class XtermViewRegistry implements TerminalViewRegistry, SearchTargets {
     slot.append(host);
     const view = new XtermTerminalView(host, {
       ...this.#options,
+      webgl: this.#webgl,
       onLink: (link, event) => {
         this.#linkActivated.emit({ pane, link, event });
       },
