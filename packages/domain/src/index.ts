@@ -31,3 +31,5 @@ export * from './command/command-ids';
 export * from './settings/settings';
 export * from './search/fuzzy';
 export * from './keybinding/keybinding-edits';
+export * from './links/links';
+export * from './editor/editor-command';

@@ -1,4 +1,4 @@
-import type { SettingsWriter, WindowPort } from '@glaceon/application';
+import type { LinkOpener, SettingsWriter, WindowPort } from '@glaceon/application';
 import type { GlaceonBridge } from '@glaceon/contracts';
 import { err, ok } from '@glaceon/domain';
 
@@ -17,5 +17,16 @@ export function settingsWriterFor(bridge: GlaceonBridge): SettingsWriter {
       const result = await bridge.updateSetting({ key, value });
       return result.ok ? ok(undefined) : err(result.error);
     },
+  };
+}
+
+export function linkOpenerFor(bridge: GlaceonBridge): LinkOpener {
+  const call = async (request: Parameters<GlaceonBridge['openLink']>[0]) => {
+    const result = await bridge.openLink(request);
+    return result.ok ? ok(undefined) : err(result.error);
+  };
+  return {
+    openUrl: (url) => call({ kind: 'url', url }),
+    openFile: (request) => call({ kind: 'file', ...request }),
   };
 }

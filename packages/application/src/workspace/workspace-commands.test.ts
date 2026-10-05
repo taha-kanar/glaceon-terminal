@@ -12,6 +12,7 @@ import { ContextKeys } from '../keybinding/context-keys';
 import { OverlayCommands } from '../overlay/overlay-commands';
 import { OverlayService } from '../overlay/overlay-service';
 import { ThemeCommands } from '../theme/theme-commands';
+import { SearchService } from '../search/search-service';
 import { FakeSettingsWriter } from '../testing';
 import { WorkspaceService } from './workspace-service';
 
@@ -40,6 +41,14 @@ describe('CoreCommands', () => {
       new ThemeCommands({ settings, writer: new FakeSettingsWriter(settings), overlay }),
     );
 
+    registry.registerContribution(
+      new SearchService({
+        targets: { searchable: () => undefined },
+        context: new ContextKeys(),
+        activePane: () => undefined,
+        onClose: () => undefined,
+      }),
+    );
     for (const id of Object.values(CommandIds)) expect(registry.has(id), id).toBe(true);
 
     registry.execute(CommandIds.tabNew);

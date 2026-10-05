@@ -3,4 +3,10 @@ export { requestPtyPort } from './pty-port-handshake';
 export { RandomIdGenerator } from './random-id-generator';
 export { toXtermTheme } from './xterm-theme';
 export { XtermTerminalView, type XtermViewOptions } from './xterm-terminal-view';
-export { XtermViewRegistry, type PaneFocusChange } from './xterm-view-registry';
+export {
+  XtermViewRegistry,
+  type PaneFocusChange,
+  type PaneLinkActivation,
+} from './xterm-view-registry';
+export { readLogicalLine, TerminalLinkProvider } from './link-provider';
+export { BrowserScheduler } from './browser-scheduler';

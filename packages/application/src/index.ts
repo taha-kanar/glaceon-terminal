@@ -20,6 +20,10 @@ export * from './overlay/overlay-commands';
 export * from './palette/palette-service';
 export * from './theme/theme-editor';
 export * from './theme/theme-commands';
+export * from './toast/toast-service';
+export type * from './links/link-opener';
+export * from './links/link-service';
+export * from './search/search-service';
 
 export type {
   ForegroundProcess,

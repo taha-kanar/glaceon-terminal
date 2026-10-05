@@ -34,4 +34,5 @@ export interface E2EProbe {
   problems(): string[];
   fontSize(): number;
   rendererKind(pane: string): 'webgl' | 'dom' | undefined;
+  locateText(text: string): { x: number; y: number } | undefined;
 }

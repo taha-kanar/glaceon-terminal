@@ -45,5 +45,9 @@ export function createE2EProbe(sources: ProbeSources): E2EProbe {
     problems: () => [...sources.problems.get()],
     fontSize: sources.fontSize,
     rendererKind: (pane) => views.get(asPaneId(pane))?.rendererKind,
+    locateText: (text) => {
+      const id = resolve(undefined);
+      return id === undefined ? undefined : views.get(id)?.locateText(text);
+    },
   };
 }

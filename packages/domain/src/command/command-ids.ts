@@ -31,6 +31,10 @@ export const CommandIds = {
   paletteToggle: 'palette.toggle',
   themeSelect: 'theme.select',
   themeEdit: 'theme.edit',
+  searchOpen: 'search.open',
+  searchNext: 'search.next',
+  searchPrevious: 'search.previous',
+  searchClose: 'search.close',
 } as const;
 
 export type BuiltinCommandId = (typeof CommandIds)[keyof typeof CommandIds];

@@ -4,7 +4,9 @@ import { useStore } from '../hooks/use-store';
 import { ConfirmDialog } from '../overlays/ConfirmDialog';
 import { ProblemsBanner } from '../overlays/ProblemsBanner';
 import { PaneArea } from '../panes/PaneArea';
+import { Toasts } from '../overlays/Toasts';
 import { CommandPalette } from '../palette/CommandPalette';
+import { SearchBar } from '../search/SearchBar';
 import { SETTINGS_SECTIONS } from '../settings/sections';
 import { SettingsPanel } from '../settings/SettingsPanel';
 import { TabBar } from '../tabs/TabBar';
@@ -20,6 +22,8 @@ export function App({ model }: AppProps): ReactElement {
   const problems = useStore(model.problems);
   const confirmation = useStore(model.confirmation);
   const overlay = useStore(model.overlay);
+  const search = useStore(model.search.state);
+  const toasts = useStore(model.toasts.items);
   const { actions } = model;
 
   return (
@@ -39,6 +43,8 @@ export function App({ model }: AppProps): ReactElement {
         actions={actions}
         bindSlot={model.bindSlot}
       />
+      {search !== undefined && <SearchBar state={search} actions={model.search} />}
+      <Toasts toasts={toasts} onDismiss={model.toasts.dismiss} />
       {overlay?.kind === 'palette' && (
         <CommandPalette
           items={model.palette.items}

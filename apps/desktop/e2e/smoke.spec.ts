@@ -27,6 +27,7 @@ test('renderer is sandboxed and isolated', async ({ window }) => {
       'onCloseRequested',
       'onRunCommand',
       'onSettingsChanged',
+      'openLink',
       'openSettingsFile',
       'updateSetting',
     ],

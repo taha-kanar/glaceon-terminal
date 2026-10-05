@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { decodeRunCommandRequest, decodeSettingsUpdateRequest } from './run-command-decoder';
+import {
+  decodeLinkOpenRequest,
+  decodeRunCommandRequest,
+  decodeSettingsUpdateRequest,
+} from './request-decoders';
 
 describe('decodeRunCommandRequest', () => {
   it('accepts commands with optional scalar args', () => {
@@ -25,5 +29,35 @@ describe('decodeSettingsUpdateRequest', () => {
     });
     expect(decodeSettingsUpdateRequest({ key: 'fontSize' })).toBeUndefined();
     expect(decodeSettingsUpdateRequest({ key: '', value: 1 })).toBeUndefined();
+  });
+});
+
+describe('decodeLinkOpenRequest', () => {
+  it('accepts urls and files with optional positions', () => {
+    expect(decodeLinkOpenRequest({ kind: 'url', url: 'https://x' })).toEqual({
+      kind: 'url',
+      url: 'https://x',
+    });
+    expect(
+      decodeLinkOpenRequest({ kind: 'file', path: 'a.ts', cwd: '/w', line: 2, column: 1 }),
+    ).toEqual({
+      kind: 'file',
+      path: 'a.ts',
+      cwd: '/w',
+      line: 2,
+      column: 1,
+    });
+  });
+
+  it('rejects malformed requests', () => {
+    for (const bad of [
+      null,
+      { kind: 'url' },
+      { kind: 'file', path: '' },
+      { kind: 'file', path: 'a', line: 0 },
+      { kind: 'exec', path: 'a' },
+    ]) {
+      expect(decodeLinkOpenRequest(bad)).toBeUndefined();
+    }
   });
 });

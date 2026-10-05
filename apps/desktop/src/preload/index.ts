@@ -8,6 +8,7 @@ import {
   PTY_PORT_WINDOW_MESSAGE,
   RendererChannel,
   type GlaceonBridge,
+  type OperationResult,
   type SettingsSnapshot,
   type SettingsUpdateResult,
   type Unsubscribe,
@@ -36,6 +37,8 @@ const bridge: GlaceonBridge = {
     await ipcRenderer.invoke(MainInvokeChannel.ptyConnect);
   },
   getSettings: () => ipcRenderer.invoke(MainInvokeChannel.settingsGet) as Promise<SettingsSnapshot>,
+  openLink: (request) =>
+    ipcRenderer.invoke(MainInvokeChannel.linkOpen, request) as Promise<OperationResult>,
   updateSetting: (request) =>
     ipcRenderer.invoke(MainInvokeChannel.settingsUpdate, request) as Promise<SettingsUpdateResult>,
   // Payloads from main are trusted; run-command requests are still decoded defensively.

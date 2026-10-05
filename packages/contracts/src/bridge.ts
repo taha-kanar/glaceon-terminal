@@ -25,6 +25,18 @@ export interface SettingsUpdateRequest {
 export type SettingsUpdateResult =
   { readonly ok: true } | { readonly ok: false; readonly error: string };
 
+export type LinkOpenRequest =
+  | { readonly kind: 'url'; readonly url: string }
+  | {
+      readonly kind: 'file';
+      readonly path: string;
+      readonly cwd?: string;
+      readonly line?: number;
+      readonly column?: number;
+    };
+
+export type OperationResult = SettingsUpdateResult;
+
 export type Unsubscribe = () => void;
 
 /** The only surface a renderer has into the privileged world. */
@@ -33,6 +45,7 @@ export interface GlaceonBridge {
   /** Asks main for a pty-host connection; the port arrives as a window message. */
   connectPty(): Promise<void>;
   getSettings(): Promise<SettingsSnapshot>;
+  openLink(request: LinkOpenRequest): Promise<OperationResult>;
   /** Validated and written by main; the new snapshot follows via `onSettingsChanged`. */
   updateSetting(request: SettingsUpdateRequest): Promise<SettingsUpdateResult>;
   onSettingsChanged(listener: (snapshot: SettingsSnapshot) => void): Unsubscribe;

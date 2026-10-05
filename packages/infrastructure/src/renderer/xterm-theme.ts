@@ -13,7 +13,8 @@ export function toXtermTheme(theme: Theme): ITheme {
     cursor: colors.cursor,
     cursorAccent: colors.cursorAccent,
     selectionBackground: rgba(colors.selection, 0.7),
-    selectionInactiveBackground: rgba(colors.selection, 0.4),
+    // The active search match is a selection while the find input has focus.
+    selectionInactiveBackground: rgba(colors.selection, 0.6),
     ...colors.ansi,
   };
 }

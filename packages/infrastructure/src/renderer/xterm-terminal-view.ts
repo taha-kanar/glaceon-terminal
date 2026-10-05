@@ -1,5 +1,10 @@
 import '@xterm/xterm/css/xterm.css';
-import type { TerminalView } from '@glaceon/application';
+import type {
+  SearchablePane,
+  SearchOptions,
+  SearchResults,
+  TerminalView,
+} from '@glaceon/application';
 import {
   Emitter,
   toDisposable,
@@ -8,9 +13,11 @@ import {
   type TerminalSize,
 } from '@glaceon/domain';
 import { FitAddon } from '@xterm/addon-fit';
+import { SearchAddon } from '@xterm/addon-search';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal, type ITheme } from '@xterm/xterm';
+import { readLogicalLine, TerminalLinkProvider, type LinkActivation } from './link-provider';
 
 export interface XtermViewOptions {
   readonly fontFamily: string;
@@ -22,13 +29,22 @@ export interface XtermViewOptions {
   readonly cursorBlink: boolean;
   readonly scrollback: number;
   readonly macOptionIsMeta: boolean;
+  /** Search highlight colors (#rrggbb). */
+  readonly searchColors: { readonly match: string; readonly active: string };
+}
+
+export interface XtermViewHooks {
+  readonly onLink: LinkActivation;
 }
 
 /** TerminalView backed by xterm.js with the WebGL renderer (DOM renderer as fallback). */
-export class XtermTerminalView implements TerminalView {
+export class XtermTerminalView implements TerminalView, SearchablePane {
   readonly element: HTMLElement;
   readonly #terminal: Terminal;
   readonly #fitAddon = new FitAddon();
+  readonly #searchAddon = new SearchAddon();
+  #searchColors: XtermViewOptions['searchColors'];
+  #lastSearchKey = '';
   readonly #resizeObserver: ResizeObserver;
   readonly #focus = new Emitter<boolean>();
   readonly #cleanup: (() => void)[] = [];
@@ -37,15 +53,24 @@ export class XtermTerminalView implements TerminalView {
   #pendingFit = 0;
 
   /** `host` must already be in the document so the renderer can measure the font. */
-  constructor(host: HTMLElement, options: XtermViewOptions) {
+  constructor(host: HTMLElement, options: XtermViewOptions & XtermViewHooks) {
     this.element = host;
+    const { searchColors, onLink, ...terminalOptions } = options;
+    this.#searchColors = searchColors;
     this.#terminal = new Terminal({
       allowProposedApi: true,
       allowTransparency: true,
       drawBoldTextInBrightColors: false,
-      ...options,
+      ...terminalOptions,
     });
     this.#terminal.loadAddon(this.#fitAddon);
+    this.#terminal.loadAddon(this.#searchAddon);
+    const links = this.#terminal.registerLinkProvider(
+      new TerminalLinkProvider(this.#terminal, onLink),
+    );
+    this.#cleanup.push(() => {
+      links.dispose();
+    });
     this.#terminal.loadAddon(new Unicode11Addon());
     this.#terminal.unicode.activeVersion = '11';
     this.#terminal.open(host);
@@ -90,8 +115,73 @@ export class XtermTerminalView implements TerminalView {
   }
 
   setOptions(options: XtermViewOptions): void {
-    Object.assign(this.#terminal.options, options);
+    const { searchColors, ...terminalOptions } = options;
+    this.#searchColors = searchColors;
+    Object.assign(this.#terminal.options, terminalOptions);
     this.#scheduleFit();
+  }
+
+  find(query: string, options: SearchOptions & { readonly backwards: boolean }): void {
+    const { match, active } = this.#searchColors;
+    const searchOptions = {
+      caseSensitive: options.caseSensitive,
+      regex: options.regex,
+      wholeWord: options.wholeWord,
+      decorations: {
+        matchBackground: match,
+        matchOverviewRuler: match,
+        activeMatchBackground: active,
+        activeMatchColorOverviewRuler: active,
+      },
+    };
+    // The addon keeps stale result counts when only the options change; start over instead.
+    const key = `${String(options.caseSensitive)}${String(options.regex)}${String(options.wholeWord)}`;
+    if (key !== this.#lastSearchKey) this.#searchAddon.clearDecorations();
+    this.#lastSearchKey = key;
+    try {
+      if (options.backwards) this.#searchAddon.findPrevious(query, searchOptions);
+      else this.#searchAddon.findNext(query, { ...searchOptions, incremental: true });
+    } catch {
+      // An incomplete regular expression while typing: no matches yet.
+      this.#searchAddon.clearDecorations();
+    }
+  }
+
+  clearSearch(): void {
+    this.#searchAddon.clearDecorations();
+    this.#terminal.clearSelection();
+  }
+
+  onSearchResults(listener: (results: SearchResults) => void): Disposable {
+    const subscription = this.#searchAddon.onDidChangeResults(({ resultIndex, resultCount }) => {
+      listener({ index: resultIndex, count: resultCount });
+    });
+    return toDisposable(() => subscription.dispose());
+  }
+
+  /** Screen position of the last occurrence of `text` (e2e tests click on links with it). */
+  locateText(text: string): { x: number; y: number } | undefined {
+    const buffer = this.#terminal.buffer.active;
+    // Bottom-up, so output wins over the command line that printed it.
+    for (let row = buffer.length - 1; row >= 0; row--) {
+      if (buffer.getLine(row)?.isWrapped === true) continue;
+      const line = readLogicalLine(this.#terminal, row);
+      const index = line?.text.lastIndexOf(text) ?? -1;
+      const cell = index < 0 ? undefined : line?.cells[index + 1];
+      if (cell !== undefined) return this.cellCenter(cell.row, cell.x);
+    }
+    return undefined;
+  }
+
+  /** Pixel position of the center of a cell in the viewport. */
+  cellCenter(row: number, column: number): { x: number; y: number } | undefined {
+    const screen = this.element.querySelector('.xterm-screen');
+    if (screen === null) return undefined;
+    const box = screen.getBoundingClientRect();
+    const width = box.width / this.#terminal.cols;
+    const height = box.height / this.#terminal.rows;
+    const viewportRow = row - this.#terminal.buffer.active.viewportY;
+    return { x: box.left + (column + 0.5) * width, y: box.top + (viewportRow + 0.5) * height };
   }
 
   /** Hidden views give up their WebGL context; browsers allow only ~16 at a time. */

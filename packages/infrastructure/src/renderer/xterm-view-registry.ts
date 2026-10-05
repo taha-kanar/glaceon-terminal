@@ -1,6 +1,12 @@
-import type { TerminalViewRegistry } from '@glaceon/application';
-import { Emitter, type Disposable, type PaneId } from '@glaceon/domain';
+import type { SearchablePane, SearchTargets, TerminalViewRegistry } from '@glaceon/application';
+import { Emitter, type Disposable, type PaneId, type TerminalLink } from '@glaceon/domain';
 import { XtermTerminalView, type XtermViewOptions } from './xterm-terminal-view';
+
+export interface PaneLinkActivation {
+  readonly pane: PaneId;
+  readonly link: TerminalLink;
+  readonly event: MouseEvent;
+}
 
 export interface PaneFocusChange {
   readonly pane: PaneId;
@@ -17,11 +23,12 @@ interface Entry {
  * the view's host element while mounted, so re-renders and layout changes never recreate a
  * terminal or lose its scrollback.
  */
-export class XtermViewRegistry implements TerminalViewRegistry {
+export class XtermViewRegistry implements TerminalViewRegistry, SearchTargets {
   readonly #document: Document;
   readonly #entries = new Map<PaneId, Entry>();
   readonly #hidden = new Set<PaneId>();
   readonly #focusChanged = new Emitter<PaneFocusChange>();
+  readonly #linkActivated = new Emitter<PaneLinkActivation>();
   #options: XtermViewOptions;
 
   constructor(document: Document, options: XtermViewOptions) {
@@ -51,7 +58,12 @@ export class XtermViewRegistry implements TerminalViewRegistry {
     const host = this.#document.createElement('div');
     host.className = 'terminal-host';
     slot.append(host);
-    const view = new XtermTerminalView(host, this.#options);
+    const view = new XtermTerminalView(host, {
+      ...this.#options,
+      onLink: (link, event) => {
+        this.#linkActivated.emit({ pane, link, event });
+      },
+    });
     const focus = view.onFocusChange((focused) => this.#focusChanged.emit({ pane, focused }));
     this.#entries.set(pane, { view, focus });
     if (this.#hidden.has(pane)) view.setVisible(false);
@@ -83,6 +95,14 @@ export class XtermViewRegistry implements TerminalViewRegistry {
   setOptions(options: XtermViewOptions): void {
     this.#options = options;
     for (const { view } of this.#entries.values()) view.setOptions(options);
+  }
+
+  searchable(pane: PaneId): SearchablePane | undefined {
+    return this.get(pane);
+  }
+
+  onLinkActivated(listener: (activation: PaneLinkActivation) => void): Disposable {
+    return this.#linkActivated.on(listener);
   }
 
   onFocusChange(listener: (change: PaneFocusChange) => void): Disposable {

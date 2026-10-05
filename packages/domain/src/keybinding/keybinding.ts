@@ -48,6 +48,10 @@ const BINDINGS: readonly KeybindingEntry[] = [
   { key: 'cmd+0', command: C.fontReset },
   { key: 'cmd+,', command: C.settingsOpen },
   { key: 'cmd+shift+p', command: C.paletteToggle },
+  { key: 'cmd+f', command: C.searchOpen },
+  { key: 'cmd+g', command: C.searchNext },
+  { key: 'cmd+shift+g', command: C.searchPrevious },
+  { key: 'escape', command: C.searchClose, when: 'searchOpen' },
 ];
 
 /** Commands that keep working while the palette or settings panel is open. */

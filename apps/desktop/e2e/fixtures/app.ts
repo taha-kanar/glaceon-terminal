@@ -26,6 +26,7 @@ interface Probe {
   sessionInfo(pane: string): { process?: string; exit?: { exitCode: number } } | undefined;
   problems(): string[];
   fontSize(): number;
+  locateText(text: string): { x: number; y: number } | undefined;
 }
 
 declare global {
@@ -43,6 +44,8 @@ export interface GlaceonWindow {
   processName(pane?: string): Promise<string | undefined>;
   problems(): Promise<string[]>;
   fontSize(): Promise<number>;
+  /** ⌘-clicks the last occurrence of `text` in the active pane. */
+  commandClick(text: string): Promise<void>;
   type(text: string): Promise<void>;
   press(keys: string): Promise<void>;
   /** Waits until the active pane has a running shell. */
@@ -63,6 +66,15 @@ function wrap(page: Page): GlaceonWindow {
     },
     problems: () => page.evaluate(() => window.__glaceonE2E.problems()),
     fontSize: () => page.evaluate(() => window.__glaceonE2E.fontSize()),
+    commandClick: async (text) => {
+      const point = await page.evaluate((t) => window.__glaceonE2E.locateText(t), text);
+      if (point === undefined) throw new Error(`"${text}" is not on screen`);
+      await page.mouse.move(point.x, point.y);
+      await page.waitForTimeout(100);
+      await page.keyboard.down('Meta');
+      await page.mouse.click(point.x, point.y);
+      await page.keyboard.up('Meta');
+    },
     type: (text) => page.keyboard.type(text),
     press: (keys) => page.keyboard.press(keys),
     // A pid alone is not enough: input typed before the shell prints its prompt can be lost.

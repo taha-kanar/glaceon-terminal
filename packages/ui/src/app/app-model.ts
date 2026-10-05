@@ -3,10 +3,13 @@ import type {
   ConfirmationRequest,
   OverlayState,
   PaletteItem,
+  SearchState,
+  Toast,
   ReadableStore,
   SessionInfoMap,
 } from '@glaceon/application';
 import type { PaneId, Settings, SplitPath, TabId, Workspace } from '@glaceon/domain';
+import type { SearchActions } from '../search/SearchBar';
 import type { SettingsPanelModel } from '../settings/settings-panel-model';
 
 /** Lets a pane slot host the terminal view of a pane. Returns the detach function. */
@@ -42,4 +45,9 @@ export interface AppModel {
     readonly run: (item: PaletteItem) => void;
   };
   readonly settingsPanel: SettingsPanelModel;
+  readonly search: SearchActions & { readonly state: ReadableStore<SearchState | undefined> };
+  readonly toasts: {
+    readonly items: ReadableStore<readonly Toast[]>;
+    readonly dismiss: (id: number) => void;
+  };
 }

@@ -2,6 +2,8 @@ export {
   BRIDGE_KEY,
   E2E_SWITCH,
   type GlaceonBridge,
+  type LinkOpenRequest,
+  type OperationResult,
   type RunCommandRequest,
   type SettingsSnapshot,
   type SettingsUpdateRequest,
@@ -21,4 +23,8 @@ export {
   decodePtyHostControlMessage,
   decodePtyHostMessage,
 } from './pty-protocol-decoders';
-export { decodeRunCommandRequest, decodeSettingsUpdateRequest } from './run-command-decoder';
+export {
+  decodeLinkOpenRequest,
+  decodeRunCommandRequest,
+  decodeSettingsUpdateRequest,
+} from './request-decoders';

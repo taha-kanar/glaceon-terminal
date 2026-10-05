@@ -10,10 +10,14 @@ import {
   type SettingsSnapshot,
   type SettingsUpdateResult,
   decodeSettingsUpdateRequest,
+  decodeLinkOpenRequest,
+  type OperationResult,
 } from '@glaceon/contracts';
 import { CommandIds, type Settings } from '@glaceon/domain';
 import {
   buildApplicationMenu,
+  EditorLauncher,
+  SystemLinkOpener,
   JsoncSettingsSource,
   PtyHostSupervisor,
   TerminalWindow,
@@ -52,6 +56,13 @@ export function createMainCompositionRoot(): MainCompositionRoot {
   });
 
   const snapshot = (): SettingsSnapshot => settings.state.get();
+  const links = new SystemLinkOpener({
+    home: homedir(),
+    editorCommand: () => settings.state.get().settings.editorCommand,
+    editor: new EditorLauncher({ shell: process.env['SHELL'] ?? '/bin/zsh' }),
+    openExternal: (url) => shell.openExternal(url),
+    openPath: (path) => shell.openPath(path),
+  });
 
   const openWindow = (): void => {
     const window = new TerminalWindow({
@@ -101,6 +112,16 @@ export function createMainCompositionRoot(): MainCompositionRoot {
       ptyHost.connect(event.sender, String(window.id));
     });
     ipcMain.handle(MainInvokeChannel.settingsGet, () => snapshot());
+    ipcMain.handle(
+      MainInvokeChannel.linkOpen,
+      async (_event, payload: unknown): Promise<OperationResult> => {
+        const request = decodeLinkOpenRequest(payload);
+        if (request === undefined) return { ok: false, error: 'Malformed link' };
+        const result =
+          request.kind === 'url' ? await links.openUrl(request.url) : await links.openFile(request);
+        return result.ok ? { ok: true } : { ok: false, error: result.error };
+      },
+    );
     ipcMain.handle(
       MainInvokeChannel.settingsUpdate,
       async (_event, payload: unknown): Promise<SettingsUpdateResult> => {

@@ -8,6 +8,9 @@ import {
   FontZoom,
   INPUT_CAPTURE_CONTEXT,
   KeybindingService,
+  LinkService,
+  SearchService,
+  ToastService,
   ObservableStore,
   OverlayCommands,
   OverlayService,
@@ -21,6 +24,7 @@ import {
 import type { SettingsSnapshot } from '@glaceon/contracts';
 import { CommandIds, EMPTY_WORKSPACE, type Workspace } from '@glaceon/domain';
 import {
+  BrowserScheduler,
   MessagePortPtyClient,
   RandomIdGenerator,
   requestPtyPort,
@@ -28,7 +32,7 @@ import {
 } from '@glaceon/infrastructure/renderer';
 import { App, type AppActions, type AppModel, type TerminalSlotBinder } from '@glaceon/ui';
 import { createElement, type ReactElement } from 'react';
-import { settingsWriterFor, windowPortFor } from './bridge-adapters';
+import { linkOpenerFor, settingsWriterFor, windowPortFor } from './bridge-adapters';
 import { createE2EProbe } from './e2e-probe';
 import { installKeyboardHandler } from './keyboard';
 import { applyTheme } from './theme-applier';
@@ -131,6 +135,24 @@ export async function createRendererCompositionRoot(
     context.set(INPUT_CAPTURE_CONTEXT, false);
     refocus();
   });
+  const search = new SearchService({
+    targets: views,
+    context,
+    activePane: () => workspace.activePane,
+    onClose: refocus,
+  });
+  registry.registerContribution(search);
+  // Search follows the pane it was opened in; switching panes closes it.
+  workspaceStore.subscribe(() => {
+    const open = search.state.get();
+    if (open !== undefined && open.pane !== workspace.activePane) search.close();
+  });
+  const toasts = new ToastService(new BrowserScheduler());
+  const links = new LinkService({ opener: linkOpenerFor(bridge), sessions, toasts });
+  views.onLinkActivated(({ pane, link, event }) => {
+    // Plain clicks select text; ⌘-click opens.
+    if (event.metaKey) void links.open(pane, link);
+  });
   installKeyboardHandler(target, keybindings);
   bridge.onRunCommand(({ command, args }) => {
     registry.execute(command, args);
@@ -199,6 +221,15 @@ export async function createRendererCompositionRoot(
       },
       openSettingsFile: () => windowPort.openSettingsFile(),
     },
+    search: {
+      state: search.state,
+      setQuery: (query) => search.setQuery(query),
+      toggle: (option) => search.toggle(option),
+      next: () => search.next(),
+      previous: () => search.previous(),
+      close: () => search.close(),
+    },
+    toasts: { items: toasts.toasts, dismiss: (id) => toasts.dismiss(id) },
   };
 
   workspace.ensureTab();
