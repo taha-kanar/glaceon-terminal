@@ -68,8 +68,9 @@ export class HostConnection {
     const started = this.#start(request);
     if (!started.ok) return started;
 
-    this.#track(request.sessionId, started.value);
-    return ok({ pid: started.value.pid, shell: basename(this.#deps.shell.file) });
+    const shellName = basename(request.shell ?? this.#deps.shell.file);
+    this.#track(request.sessionId, started.value, shellName);
+    return ok({ pid: started.value.pid, shell: shellName });
   }
 
   write(sessionId: SessionId, data: string): void {
@@ -175,7 +176,7 @@ export class HostConnection {
     try {
       return ok(
         processes.spawn({
-          file: shell.file,
+          file: request.shell ?? shell.file,
           args: shell.args,
           cwd: request.cwd ?? shell.cwd,
           env: shell.env,
@@ -187,13 +188,13 @@ export class HostConnection {
     }
   }
 
-  #track(sessionId: SessionId, process: PtyProcess): void {
-    const { registry, output, scheduler, flow, inspector, shell } = this.#deps;
+  #track(sessionId: SessionId, process: PtyProcess, shellName: string): void {
+    const { registry, output, scheduler, flow, inspector } = this.#deps;
     const session = new HostSession(sessionId, process, {
       scheduler,
       output,
       inspector,
-      shellName: basename(shell.file),
+      shellName,
       ...(flow === undefined ? {} : { flow }),
       onExit: () => {
         registry.remove(sessionId);

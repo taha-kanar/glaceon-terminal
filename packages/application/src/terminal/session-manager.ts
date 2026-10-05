@@ -19,6 +19,8 @@ export interface SessionInfo {
   readonly process?: string;
   /** Something other than the idle shell is in the foreground. */
   readonly busy?: boolean;
+  /** When the current foreground program started (epoch ms), while busy. */
+  readonly busySince?: number;
   readonly exit?: PtyExit;
   readonly error?: string;
 }
@@ -60,8 +62,11 @@ export class SessionManager {
   >();
   #focusRequest: PaneId | undefined;
 
-  constructor(sessions: TerminalSessionService) {
+  readonly #now: () => number;
+
+  constructor(sessions: TerminalSessionService, now: () => number = Date.now) {
     this.#sessions = sessions;
+    this.#now = now;
   }
 
   get info(): ReadableStore<SessionInfoMap> {
@@ -233,7 +238,9 @@ export class SessionManager {
       process: session.spawned.shell,
     });
     entry.wiring.add(
-      session.onProcess(({ name, busy }) => this.#patchInfo(pane, { process: name, busy })),
+      session.onProcess(({ name, busy }) => {
+        this.#reportProcess(pane, name, busy);
+      }),
     );
     entry.wiring.add(session.onExit((exit) => this.#handleExit(pane, exit)));
     if (this.#focusRequest === pane) this.focus(pane);
@@ -259,6 +266,21 @@ export class SessionManager {
       else next.set(pane, info);
       return next;
     });
+  }
+
+  /** A new foreground program restarts the clock; the idle shell clears it. */
+  #reportProcess(pane: PaneId, name: string, busy: boolean): void {
+    const current = this.#info.get().get(pane);
+    if (current === undefined) return;
+    const since = current.busy === true && current.process === name ? current.busySince : undefined;
+    const next: { -readonly [K in keyof SessionInfo]: SessionInfo[K] } = {
+      ...current,
+      process: name,
+      busy,
+    };
+    if (busy) next.busySince = since ?? this.#now();
+    else delete next.busySince;
+    this.#setInfo(pane, next);
   }
 
   #patchInfo(pane: PaneId, patch: Partial<SessionInfo>): void {

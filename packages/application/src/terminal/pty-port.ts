@@ -4,6 +4,8 @@ export interface SpawnRequest {
   readonly sessionId: SessionId;
   readonly size: TerminalSize;
   readonly cwd?: string;
+  /** Shell executable; the host's default (the login shell) when omitted. */
+  readonly shell?: string;
 }
 
 export interface SpawnedSession {

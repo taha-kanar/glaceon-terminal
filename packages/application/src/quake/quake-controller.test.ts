@@ -76,6 +76,13 @@ describe('QuakeController', () => {
     controller.blurred();
   });
 
+  it('stays up on blur when hiding on blur is turned off', () => {
+    const { panel, controller } = setup({ quakeHideOnBlur: false });
+    controller.show();
+    controller.blurred();
+    expect(panel.visible).toBe(true);
+  });
+
   it('shows itself again when visible but unfocused', () => {
     const { panel, controller } = setup();
     controller.show();

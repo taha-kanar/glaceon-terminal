@@ -1,9 +1,11 @@
 import type { SessionInfoMap } from '@glaceon/application';
 import { activeTab, leafIds, type Workspace } from '@glaceon/domain';
-import { useRef, type ReactElement } from 'react';
+import { useCallback, useRef, useState, type ReactElement } from 'react';
 import type { AppActions, TerminalSlotBinder } from '../app/app-model';
 import type { ArrangeActions } from '../tabs/arrange-actions';
+import { ContextMenu } from '../menu/ContextMenu';
 import { Divider } from './Divider';
+import { paneMenu } from './pane-menu';
 import { placePanes, rectStyle, visibleDividers } from './pane-geometry';
 import { PaneSlot } from './PaneSlot';
 import { usePaneDrag } from './use-pane-drag';
@@ -23,6 +25,10 @@ export function PaneArea(props: PaneAreaProps): ReactElement {
   const split = current !== undefined && !current.zoomed && leafIds(current.root).length > 1;
   const placed = placePanes(workspace);
   const drag = usePaneDrag(container, placed, props.arrange.movePane);
+  const [menu, setMenu] = useState<{ readonly x: number; readonly y: number } | undefined>();
+  const closeMenu = useCallback(() => {
+    setMenu(undefined);
+  }, []);
 
   return (
     <main className={drag.source === undefined ? 'workspace' : 'workspace workspace--dragging'}>
@@ -36,6 +42,11 @@ export function PaneArea(props: PaneAreaProps): ReactElement {
             draggable={split && pane.visible}
             dragging={drag.source === pane.pane}
             onGrab={drag.onPointerDown}
+            onContextMenu={(pane, event) => {
+              event.preventDefault();
+              actions.focusPane(pane);
+              setMenu({ x: event.clientX, y: event.clientY });
+            }}
             bindSlot={bindSlot}
             actions={actions}
           />
@@ -60,6 +71,14 @@ export function PaneArea(props: PaneAreaProps): ReactElement {
           />
         )}
       </div>
+      {menu !== undefined && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          entries={paneMenu(actions.runCommand)}
+          onClose={closeMenu}
+        />
+      )}
     </main>
   );
 }

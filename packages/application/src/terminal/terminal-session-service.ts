@@ -16,6 +16,8 @@ import type { TerminalView } from './terminal-view';
 export interface TerminalSessionServiceDeps {
   readonly pty: PtyPort;
   readonly ids: IdGenerator;
+  /** The configured shell for new sessions ('' for the default). */
+  readonly shell?: () => string;
 }
 
 export interface OpenSessionOptions {
@@ -41,10 +43,12 @@ export class TerminalSessionService {
     const sessionId = asSessionId(ids.next());
     // Listen before spawning so the first bytes of output are never missed.
     const resources = this.#listen(sessionId, view);
+    const shell = this.#deps.shell?.().trim() ?? '';
     const spawned = await pty.spawn({
       sessionId,
       size: normalizeTerminalSize(view.fit()),
       ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+      ...(shell === '' ? {} : { shell }),
     });
     if (!spawned.ok) {
       resources.wiring.dispose();

@@ -90,7 +90,7 @@ export class QuakeController {
 
   /** Called when the panel loses focus (e.g. a click into another app). */
   blurred(): void {
-    this.hide();
+    if (this.#deps.settings.get().quakeHideOnBlur) this.hide();
   }
 
   #apply(): void {

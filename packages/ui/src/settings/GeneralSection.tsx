@@ -77,6 +77,9 @@ export function GeneralSection({ model, settings, report }: SectionProps): React
       </Row>
 
       <h3 className="section__title">Behaviour</h3>
+      <Row label="Shell" hint="Empty: your login shell">
+        <TextInput name="shell" value={settings.shell} wide onCommit={set('shell')} />
+      </Row>
       <Row label="Scrollback lines">
         <NumberInput
           name="scrollback"
@@ -145,6 +148,13 @@ export function GeneralSection({ model, settings, report }: SectionProps): React
           {quake.error}
         </p>
       )}
+      <Row label="Hide when another app is focused">
+        <Toggle
+          name="quakeHideOnBlur"
+          checked={settings.quakeHideOnBlur}
+          onChange={set('quakeHideOnBlur')}
+        />
+      </Row>
       <Row label="Height" hint="Share of the screen">
         <NumberInput
           name="quakeHeight"

@@ -89,6 +89,14 @@ describe('PtySessionHost', () => {
     expect(host.sessionCount).toBe(2);
   });
 
+  it('starts the requested shell as a login shell instead of the default', () => {
+    const { processes, host } = setup();
+    const connection = host.openConnection(new RecordingOutput());
+    const spawned = connection.spawn({ sessionId: asSessionId('a'), size, shell: '/bin/bash' });
+    expect(spawned).toEqual({ ok: true, value: { pid: 1000, shell: 'bash' } });
+    expect(processes.processes[0]?.options).toMatchObject({ file: '/bin/bash', args: ['-l'] });
+  });
+
   it('routes output and exit to the owning connection only', () => {
     const { processes, host } = setup();
     const outputA = new RecordingOutput();

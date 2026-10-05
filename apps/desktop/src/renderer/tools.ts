@@ -1,4 +1,5 @@
 import {
+  EditCommands,
   ObservableStore,
   ToolCommands,
   computed,
@@ -15,6 +16,7 @@ import type { ToolsModel } from '@glaceon/ui';
 export interface RendererTools {
   readonly model: ToolsModel;
   readonly commands: ToolCommands;
+  readonly edit: EditCommands;
 }
 
 /**
@@ -64,8 +66,26 @@ export async function createRendererTools(parts: {
     paste,
     openSnippetsFile,
   });
+  const activeView = () => {
+    const pane = workspace.activePane;
+    return pane === undefined ? undefined : parts.views.get(pane);
+  };
+  const edit = new EditCommands({
+    copy: () => {
+      const text = activeView()?.selectionText() ?? '';
+      if (text !== '') bridge.writeClipboard(text);
+    },
+    paste: async () => {
+      const text = await bridge.readClipboard();
+      if (text !== '') paste(text);
+    },
+    selectAll: () => {
+      activeView()?.selectAll();
+    },
+  });
   return {
     model: { ring, snippets, paste, openSnippetsFile },
     commands,
+    edit,
   };
 }

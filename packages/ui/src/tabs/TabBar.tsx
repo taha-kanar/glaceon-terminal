@@ -66,7 +66,11 @@ export function TabBar(props: TabBarProps): ReactElement {
                   setMenu({
                     x: event.clientX,
                     y: event.clientY,
-                    entries: groupMenu(group, arrange),
+                    entries: groupMenu(group, arrange, () => {
+                      for (const tab of workspace.tabs) {
+                        if (tab.group === group.id) actions.closeTab(tab.id);
+                      }
+                    }),
                   });
                 }}
               >
@@ -95,6 +99,7 @@ export function TabBar(props: TabBarProps): ReactElement {
               active={tab.id === workspace.activeTab}
               group={entry.group}
               panes={leafIds(tab.root).length}
+              busySince={sessions.get(tab.activePane)?.busySince}
               renaming={renaming?.kind === 'tab' && renaming.id === tab.id}
               dragging={drag.state?.tab === tab.id}
               onSelect={() => {

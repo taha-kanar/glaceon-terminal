@@ -11,6 +11,7 @@ import { CoreCommands } from './workspace-commands';
 import { ContextKeys } from '../keybinding/context-keys';
 import { JobCommands } from '../jobs/job-commands';
 import { ToolCommands } from '../tools/tool-commands';
+import { EditCommands } from '../tools/edit-commands';
 import { OverlayCommands } from '../overlay/overlay-commands';
 import { OverlayService } from '../overlay/overlay-service';
 import { ThemeCommands } from '../theme/theme-commands';
@@ -75,6 +76,13 @@ describe('CoreCommands', () => {
         snippets: new ObservableStore([]),
         paste: () => undefined,
         openSnippetsFile: () => undefined,
+      }),
+    );
+    registry.registerContribution(
+      new EditCommands({
+        copy: () => undefined,
+        paste: () => Promise.resolve(),
+        selectAll: () => undefined,
       }),
     );
     registry.registerContribution(

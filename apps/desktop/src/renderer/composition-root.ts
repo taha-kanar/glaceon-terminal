@@ -89,7 +89,9 @@ export async function createRendererCompositionRoot(
   // ---- sessions and workspace
   const pty = new MessagePortPtyClient(port);
   const ids = new RandomIdGenerator();
-  const sessions = new SessionManager(new TerminalSessionService({ pty, ids }));
+  const sessions = new SessionManager(
+    new TerminalSessionService({ pty, ids, shell: () => baseSettings.get().shell }),
+  );
   const workspaceStore = new ObservableStore<Workspace>(EMPTY_WORKSPACE);
   const confirmation = new ConfirmationService();
   const windowPort = windowPortFor(bridge);
@@ -163,6 +165,7 @@ export async function createRendererCompositionRoot(
     settings,
   });
   registry.registerContribution(tools.commands);
+  registry.registerContribution(tools.edit);
   registry.onDidFail(({ commandId, error }) => {
     console.error(`[renderer] command ${commandId} failed`, error);
   });

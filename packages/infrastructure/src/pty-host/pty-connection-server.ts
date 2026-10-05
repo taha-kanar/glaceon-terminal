@@ -73,6 +73,7 @@ function dispatch(
         sessionId,
         size: normalizeTerminalSize(message),
         ...(message.cwd === undefined ? {} : { cwd: message.cwd }),
+        ...(message.shell === undefined ? {} : { shell: message.shell }),
       });
       const reply: PtyHostMessage = result.ok
         ? { t: 'spawned', reqId: message.reqId, ...result.value }

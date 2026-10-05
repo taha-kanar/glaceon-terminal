@@ -21,6 +21,23 @@ describe('TerminalSessionService.open', () => {
     expect(pty.spawned).toEqual([{ sessionId: 's-1', size: { cols: 132, rows: 43 }, cwd: '/tmp' }]);
   });
 
+  it('asks for the configured shell, and for the default when none is set', async () => {
+    const pty = new FakePtyPort();
+    let shell = ' /opt/homebrew/bin/fish ';
+    const service = new TerminalSessionService({
+      pty,
+      ids: new SequentialIdGenerator('s'),
+      shell: () => shell,
+    });
+    await service.open(new FakeTerminalView());
+    shell = '';
+    await service.open(new FakeTerminalView());
+    expect(pty.spawned.map((request) => request.shell)).toEqual([
+      '/opt/homebrew/bin/fish',
+      undefined,
+    ]);
+  });
+
   it('normalizes a degenerate fitted size', async () => {
     const { pty, view, service } = setup();
     view.fitSize = { cols: 0, rows: Number.NaN };

@@ -66,6 +66,7 @@ export class MessagePortPtyClient implements PtyPort, ProcessMonitorPort {
         cols: request.size.cols,
         rows: request.size.rows,
         ...(request.cwd === undefined ? {} : { cwd: request.cwd }),
+        ...(request.shell === undefined ? {} : { shell: request.shell }),
       });
     });
   }

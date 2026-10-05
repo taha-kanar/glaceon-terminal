@@ -36,6 +36,25 @@ describe('SessionManager', () => {
     expect(manager.isBusy(asPaneId('other'))).toBe(false);
   });
 
+  it('remembers when the foreground program started', async () => {
+    const pty = new FakePtyPort();
+    let now = 1000;
+    const manager = new SessionManager(
+      new TerminalSessionService({ pty, ids: new SequentialIdGenerator('s') }),
+      () => now,
+    );
+    await manager.open(pane, new FakeTerminalView());
+    const session = pty.spawned[0]!.sessionId;
+    pty.emitProcess(session, 'npm');
+    now = 5000;
+    pty.emitProcess(session, 'npm');
+    expect(manager.info.get().get(pane)?.busySince).toBe(1000);
+    pty.emitProcess(session, 'node');
+    expect(manager.info.get().get(pane)?.busySince).toBe(5000);
+    pty.emitProcess(session, 'zsh', false);
+    expect(manager.info.get().get(pane)).not.toHaveProperty('busySince');
+  });
+
   it('marks exits, emits them and restarts on Enter', async () => {
     const { pty, manager, view } = setup();
     const exits: number[] = [];

@@ -1,6 +1,6 @@
 import type { SessionInfo } from '@glaceon/application';
 import type { PaneId } from '@glaceon/domain';
-import { useEffect, useRef, type PointerEvent, type ReactElement } from 'react';
+import { useEffect, useRef, type MouseEvent, type PointerEvent, type ReactElement } from 'react';
 import type { AppActions, TerminalSlotBinder } from '../app/app-model';
 import { ExitOverlay } from './ExitOverlay';
 import { rectStyle, type PlacedPane } from './pane-geometry';
@@ -13,6 +13,7 @@ export interface PaneSlotProps {
   readonly draggable: boolean;
   readonly dragging: boolean;
   readonly onGrab: (pane: PaneId, event: PointerEvent) => void;
+  readonly onContextMenu: (pane: PaneId, event: MouseEvent) => void;
   readonly bindSlot: TerminalSlotBinder;
   readonly actions: AppActions;
 }
@@ -43,6 +44,9 @@ export function PaneSlot(props: PaneSlotProps): ReactElement {
       data-focused={placed.focused}
       onMouseDown={() => {
         actions.focusPane(pane);
+      }}
+      onContextMenu={(event) => {
+        props.onContextMenu(pane, event);
       }}
     >
       <div ref={terminalRef} className="pane__terminal" />

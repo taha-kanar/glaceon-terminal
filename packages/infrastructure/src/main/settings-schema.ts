@@ -49,6 +49,7 @@ export const settingsSchema = z
     backgroundImage: z.string(),
     backgroundImageFit: z.enum(['cover', 'contain', 'fill']),
     backgroundImageOpacity: z.number().min(0.05).max(1),
+    shell: z.string(),
     cursorStyle: z.enum(['block', 'bar', 'underline']),
     cursorBlink: z.boolean(),
     scrollback: z.number().int().min(0).max(1_000_000),
@@ -60,6 +61,7 @@ export const settingsSchema = z
     quakeEnabled: z.boolean(),
     quakeShortcut: z.string(),
     quakeHeight: z.number().min(0.2).max(1),
+    quakeHideOnBlur: z.boolean(),
     keybindings: z.array(keybinding),
     customThemes: z.array(theme),
   })

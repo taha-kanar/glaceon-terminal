@@ -16,6 +16,7 @@ export const SETTINGS_TEMPLATE = `// Glaceon Terminal settings. Changes apply as
   // "backgroundImageFit": "cover", // cover | contain | fill
   // "backgroundImageOpacity": 1,
 
+  // "shell": "",                    // e.g. "/opt/homebrew/bin/fish"; empty: your login shell
   // "cursorStyle": "block",        // block | bar | underline
   // "cursorBlink": true,
   // "scrollback": 10000,
@@ -31,6 +32,7 @@ export const SETTINGS_TEMPLATE = `// Glaceon Terminal settings. Changes apply as
   // "quakeEnabled": true,
   // "quakeShortcut": "ctrl+\`",
   // "quakeHeight": 0.45,
+  // "quakeHideOnBlur": true,       // hide when you click into another app
 
   // Later entries win. Prefix a command with "-" to remove its default binding.
   "keybindings": [

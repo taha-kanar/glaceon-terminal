@@ -14,6 +14,7 @@ export function tabMenu(
 ): MenuEntry[] {
   const { workspace, arrange } = context;
   const otherGroups = workspace.groups.filter((group) => group.id !== tab.group);
+  const index = workspace.tabs.findIndex((t) => t.id === tab.id);
   return [
     {
       kind: 'item',
@@ -69,6 +70,19 @@ export function tabMenu(
     { kind: 'separator' },
     {
       kind: 'item',
+      label: 'Move Left',
+      disabled: index <= 0,
+      onSelect: () => arrange.moveTab(tab.id, index - 1),
+    },
+    {
+      kind: 'item',
+      label: 'Move Right',
+      disabled: index >= workspace.tabs.length - 1,
+      onSelect: () => arrange.moveTab(tab.id, index + 1),
+    },
+    { kind: 'separator' },
+    {
+      kind: 'item',
       label: 'Close Tab',
       disabled: tab.pinned || tab.locked,
       onSelect: context.closeTab,
@@ -76,7 +90,11 @@ export function tabMenu(
   ];
 }
 
-export function groupMenu(group: TabGroup, arrange: ArrangeActions): MenuEntry[] {
+export function groupMenu(
+  group: TabGroup,
+  arrange: ArrangeActions,
+  closeTabs: () => void,
+): MenuEntry[] {
   return [
     {
       kind: 'item',
@@ -98,5 +116,7 @@ export function groupMenu(group: TabGroup, arrange: ArrangeActions): MenuEntry[]
       onSelect: () => arrange.toggleGroupCollapsed(group.id),
     },
     { kind: 'item', label: 'Ungroup', onSelect: () => arrange.ungroup(group.id) },
+    { kind: 'separator' },
+    { kind: 'item', label: 'Close All Tabs in Group', onSelect: closeTabs },
   ];
 }

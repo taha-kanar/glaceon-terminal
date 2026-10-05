@@ -25,7 +25,8 @@ export function decodePtyClientMessage(value: unknown): PtyClientMessage | undef
       return isFiniteNumber(message.reqId) &&
         isFiniteNumber(message.cols) &&
         isFiniteNumber(message.rows) &&
-        isOptional(message.cwd, isNonEmptyString)
+        isOptional(message.cwd, isNonEmptyString) &&
+        isOptional(message.shell, isNonEmptyString)
         ? message
         : undefined;
     case 'input':

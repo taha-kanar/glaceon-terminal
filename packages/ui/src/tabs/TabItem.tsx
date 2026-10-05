@@ -1,5 +1,6 @@
 import type { Tab, TabGroup } from '@glaceon/domain';
 import type { CSSProperties, MouseEvent, PointerEvent, ReactElement } from 'react';
+import { ElapsedBadge } from './ElapsedBadge';
 import { RenameInput } from './RenameInput';
 
 export interface TabItemProps {
@@ -9,6 +10,8 @@ export interface TabItemProps {
   readonly active: boolean;
   readonly group: TabGroup | undefined;
   readonly panes: number;
+  /** When the active pane's foreground program started, while one runs. */
+  readonly busySince: number | undefined;
   readonly renaming: boolean;
   readonly dragging: boolean;
   readonly onSelect: () => void;
@@ -84,6 +87,7 @@ export function TabItem(props: TabItemProps): ReactElement {
         !tab.pinned && <span className="tab__title">{title}</span>
       )}
       {tab.locked && <LockIcon />}
+      {props.busySince !== undefined && !tab.pinned && <ElapsedBadge since={props.busySince} />}
       {panes > 1 && !tab.pinned && <span className="tab__badge">{panes}</span>}
       {closable && (
         <button

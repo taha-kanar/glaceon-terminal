@@ -131,6 +131,7 @@ export interface GlaceonBridge {
   getSnippets(): Promise<SnippetsSnapshot>;
   onSnippetsChanged(listener: (snapshot: SnippetsSnapshot) => void): Unsubscribe;
   openSnippetsFile(): void;
+  readClipboard(): Promise<string>;
   /** Asks the user for a background image; resolves with its path, or undefined if cancelled. */
   chooseBackgroundImage(): Promise<string | undefined>;
   /** Newest first, at most ten. */

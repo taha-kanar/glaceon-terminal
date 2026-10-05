@@ -9,6 +9,7 @@ export type PtyClientMessage =
       readonly cols: number;
       readonly rows: number;
       readonly cwd?: string;
+      readonly shell?: string;
     }
   | { readonly t: 'input'; readonly sid: string; readonly data: string }
   | { readonly t: 'resize'; readonly sid: string; readonly cols: number; readonly rows: number }

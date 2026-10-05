@@ -27,6 +27,8 @@ export interface Settings {
   readonly backgroundImageFit: BackgroundImageFit;
   /** Opacity of the background image, 0.05..1. */
   readonly backgroundImageOpacity: number;
+  /** Shell for new panes (started as a login shell), or '' for the user's login shell. */
+  readonly shell: string;
   readonly cursorStyle: CursorStyle;
   readonly cursorBlink: boolean;
   readonly scrollback: number;
@@ -42,6 +44,8 @@ export interface Settings {
   readonly quakeShortcut: string;
   /** Height of the quake window as a share of the screen, 0.2..1. */
   readonly quakeHeight: number;
+  /** Hide the quake window when another app gets focus. */
+  readonly quakeHideOnBlur: boolean;
   readonly keybindings: readonly KeybindingEntry[];
   /** Themes made with the theme editor, selectable next to the built-in ones. */
   readonly customThemes: readonly Theme[];
@@ -61,6 +65,7 @@ export const DEFAULT_SETTINGS: Settings = {
   backgroundImage: '',
   backgroundImageFit: 'cover',
   backgroundImageOpacity: 1,
+  shell: '',
   cursorStyle: 'block',
   cursorBlink: true,
   scrollback: 10_000,
@@ -72,6 +77,7 @@ export const DEFAULT_SETTINGS: Settings = {
   quakeEnabled: true,
   quakeShortcut: 'ctrl+`',
   quakeHeight: 0.45,
+  quakeHideOnBlur: true,
   keybindings: [],
   customThemes: [],
 };

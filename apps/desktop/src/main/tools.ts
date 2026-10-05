@@ -18,9 +18,10 @@ export function createTools(options: {
 }): Tools {
   const source = new JsoncSnippetSource(join(options.configDirectory, 'snippets.json'));
   const snippets = new SnippetLibrary(source);
+  // Tests never touch the user's real clipboard.
+  const clipboard = options.e2e ? new MemoryClipboard() : new SystemClipboard();
   const clipboardRing = new ClipboardRingService({
-    // Tests never touch the user's real clipboard.
-    clipboard: options.e2e ? new MemoryClipboard() : new SystemClipboard(),
+    clipboard,
     scheduler: {
       setTimeout: (callback, ms) => {
         const timer = setTimeout(callback, ms);
@@ -37,6 +38,7 @@ export function createTools(options: {
     async start(broadcast) {
       ipcMain.handle(MainInvokeChannel.snippetsGet, () => snippets.state.get());
       ipcMain.handle(MainInvokeChannel.clipboardRingGet, () => clipboardRing.ring.get());
+      ipcMain.handle(MainInvokeChannel.clipboardRead, () => clipboard.readText());
       ipcMain.on(MainSendChannel.clipboardWrite, (_event, text: unknown) => {
         if (typeof text === 'string' && text.length <= MAX_CLIP_BYTES)
           void clipboardRing.copy(text);

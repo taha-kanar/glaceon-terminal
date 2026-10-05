@@ -9,6 +9,7 @@ describe('decodePtyClientMessage', () => {
   it.each([
     { t: 'spawn', reqId: 1, sid: 'a', cols: 80, rows: 24 },
     { t: 'spawn', reqId: 1, sid: 'a', cols: 80, rows: 24, cwd: '/tmp' },
+    { t: 'spawn', reqId: 1, sid: 'a', cols: 80, rows: 24, shell: '/bin/bash' },
     { t: 'input', sid: 'a', data: '' },
     { t: 'resize', sid: 'a', cols: 1, rows: 1 },
     { t: 'kill', sid: 'a' },
