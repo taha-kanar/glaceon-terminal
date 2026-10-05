@@ -52,6 +52,9 @@ export const settingsSchema = z
     confirmCloseRunningProcess: z.boolean(),
     closeOnExit: z.enum(['always', 'clean', 'never']),
     editorCommand: z.string().min(1),
+    quakeEnabled: z.boolean(),
+    quakeShortcut: z.string(),
+    quakeHeight: z.number().min(0.2).max(1),
     keybindings: z.array(keybinding),
     customThemes: z.array(theme),
   })

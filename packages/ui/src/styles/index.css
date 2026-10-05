@@ -1326,3 +1326,23 @@ body.dragging-column * {
   opacity: 0.25;
   outline: 1px dashed var(--accent);
 }
+
+.section__error {
+  margin: -4px 0 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+  font-size: 12px;
+}
+
+/* ---- quake window: no traffic lights, rounded bottom edge ---- */
+
+.app--quake .titlebar {
+  padding-left: 8px;
+}
+
+.app--quake {
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
+}

@@ -33,6 +33,7 @@ test('renderer is sandboxed and isolated', async ({ window }) => {
       'openSettingsFile',
       'transferTab',
       'updateSetting',
+      'windowKind',
       'windowReady',
     ],
   });

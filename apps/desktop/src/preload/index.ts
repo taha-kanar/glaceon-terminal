@@ -2,6 +2,7 @@ import {
   BRIDGE_KEY,
   decodeRunCommandRequest,
   E2E_SWITCH,
+  QUAKE_SWITCH,
   MainInvokeChannel,
   MainSendChannel,
   PTY_PORT_IPC_CHANNEL,
@@ -36,6 +37,7 @@ function listen(channel: string, listener: (payload: unknown) => void): Unsubscr
 
 const bridge: GlaceonBridge = {
   e2e: process.argv.includes(E2E_SWITCH),
+  windowKind: process.argv.includes(QUAKE_SWITCH) ? 'quake' : 'normal',
   connectPty: async () => {
     await ipcRenderer.invoke(MainInvokeChannel.ptyConnect);
   },

@@ -1,6 +1,6 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { KeybindingResolver, SettingsService } from '@glaceon/application';
+import { KeybindingResolver, SettingsService, type QuakeController } from '@glaceon/application';
 import {
   E2E_SWITCH,
   MainInvokeChannel,
@@ -28,6 +28,7 @@ import {
   type RendererSource,
 } from '@glaceon/infrastructure/main';
 import { app, BrowserWindow, ipcMain, Menu, shell, type IpcMainEvent } from 'electron';
+import { createQuake } from './quake';
 
 export interface MainCompositionRoot {
   start(): Promise<void>;
@@ -60,7 +61,16 @@ export function createMainCompositionRoot(): MainCompositionRoot {
     },
   });
 
-  const snapshot = (): SettingsSnapshot => settings.state.get();
+  let quake: QuakeController | undefined;
+  const snapshot = (): SettingsSnapshot => {
+    const status = quake?.status.get();
+    return status === undefined ? settings.state.get() : { ...settings.state.get(), quake: status };
+  };
+  const broadcastSettings = (): void => {
+    for (const window of windows.values()) {
+      window.browserWindow.webContents.send(RendererChannel.settingsChanged, snapshot());
+    }
+  };
   const links = new SystemLinkOpener({
     home: homedir(),
     editorCommand: () => settings.state.get().settings.editorCommand,
@@ -78,11 +88,15 @@ export function createMainCompositionRoot(): MainCompositionRoot {
     }
   };
 
-  const openWindow = (at?: { readonly x: number; readonly y: number }): TerminalWindow => {
+  const openWindow = (
+    at?: { readonly x: number; readonly y: number },
+    kind: 'normal' | 'quake' = 'normal',
+  ): TerminalWindow => {
     const window = new TerminalWindow({
       preloadPath: join(import.meta.dirname, '../preload/index.cjs'),
       renderer: rendererSource(),
       e2e,
+      kind,
       hidden,
       // A torn-off tab's window appears under the pointer, title bar first.
       ...(at === undefined ? {} : { position: { x: at.x - 160, y: at.y - 16 } }),
@@ -110,7 +124,7 @@ export function createMainCompositionRoot(): MainCompositionRoot {
   });
 
   const transfers = new TabTransferCoordinator({
-    windows: () => [...windows.values()].map(asTransferWindow),
+    windows: () => [...windows.values()].filter((w) => w.kind === 'normal').map(asTransferWindow),
     openWindow: (at) => asTransferWindow(openWindow(at)),
     setTimeout: (callback, ms) => {
       const timer = setTimeout(callback, ms);
@@ -209,15 +223,21 @@ export function createMainCompositionRoot(): MainCompositionRoot {
       await settings.start();
       settings.state.subscribe(() => {
         installMenu();
-        for (const window of windows.values()) {
-          window.browserWindow.webContents.send(RendererChannel.settingsChanged, snapshot());
-        }
+        broadcastSettings();
       });
       installMenu();
       registerIpc();
       openWindow();
+      quake = createQuake({
+        settings: settings.state,
+        openWindow: () => openWindow(undefined, 'quake'),
+        prewarm: !e2e,
+        hidden,
+      });
+      quake.status.subscribe(broadcastSettings);
+      quake.start();
       app.on('activate', () => {
-        if (windows.size === 0) openWindow();
+        if (![...windows.values()].some((w) => w.kind === 'normal')) openWindow();
       });
       app.on('before-quit', () => {
         for (const window of windows.values()) window.approveClose();
@@ -226,6 +246,7 @@ export function createMainCompositionRoot(): MainCompositionRoot {
     dispose() {
       for (const channel of Object.values(MainInvokeChannel)) ipcMain.removeHandler(channel);
       for (const channel of Object.values(MainSendChannel)) ipcMain.removeAllListeners(channel);
+      quake?.dispose();
       settings.dispose();
       ptyHost.stop();
     },

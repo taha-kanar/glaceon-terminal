@@ -24,6 +24,12 @@ export interface Settings {
   readonly closeOnExit: CloseOnExit;
   /** Command template for opening `file:line:col` links, e.g. `code -g {file}:{line}:{col}`. */
   readonly editorCommand: string;
+  /** The drop-down terminal on a global shortcut. */
+  readonly quakeEnabled: boolean;
+  /** Global shortcut that shows and hides the quake window, e.g. `ctrl+\``. */
+  readonly quakeShortcut: string;
+  /** Height of the quake window as a share of the screen, 0.2..1. */
+  readonly quakeHeight: number;
   readonly keybindings: readonly KeybindingEntry[];
   /** Themes made with the theme editor, selectable next to the built-in ones. */
   readonly customThemes: readonly Theme[];
@@ -46,6 +52,9 @@ export const DEFAULT_SETTINGS: Settings = {
   confirmCloseRunningProcess: true,
   closeOnExit: 'clean',
   editorCommand: 'code -g {file}:{line}:{col}',
+  quakeEnabled: true,
+  quakeShortcut: 'ctrl+`',
+  quakeHeight: 0.45,
   keybindings: [],
   customThemes: [],
 };

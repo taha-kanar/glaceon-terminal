@@ -1,6 +1,7 @@
 export {
   BRIDGE_KEY,
   E2E_SWITCH,
+  QUAKE_SWITCH,
   type GlaceonBridge,
   type LinkOpenRequest,
   type OperationResult,
@@ -9,6 +10,7 @@ export {
   type SettingsUpdateRequest,
   type SettingsUpdateResult,
   type PaneTransferWire,
+  type QuakeStatus,
   type TabImportRequest,
   type TabImportResult,
   type TabPayloadWire,

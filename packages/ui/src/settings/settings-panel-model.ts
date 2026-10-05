@@ -1,6 +1,7 @@
 import type {
   Command,
   KeybindingResolver,
+  QuakeStatus,
   ReadableStore,
   ThemeColorKey,
 } from '@glaceon/application';
@@ -36,4 +37,6 @@ export interface SettingsPanelModel {
   readonly themes: ThemeEditorModel;
   readonly keybindings: KeybindingsModel;
   readonly openSettingsFile: () => void;
+  /** Whether the quake shortcut is registered (undefined until main reports it). */
+  readonly quakeStatus: ReadableStore<QuakeStatus | undefined>;
 }

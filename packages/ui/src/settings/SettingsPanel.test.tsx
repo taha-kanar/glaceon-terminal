@@ -19,6 +19,9 @@ function model() {
     { id: 'tab.new', title: 'New Tab', category: 'Tab', run: vi.fn() },
   ];
   const setCapture = vi.fn();
+  const quakeStatus = new ObservableStore<{ registered: boolean; error?: string } | undefined>(
+    undefined,
+  );
   const value: SettingsPanelModel = {
     settings,
     update,
@@ -37,8 +40,9 @@ function model() {
       setCapture,
     },
     openSettingsFile: vi.fn(),
+    quakeStatus,
   };
-  return { value, update, setCapture, settings };
+  return { value, update, setCapture, settings, quakeStatus };
 }
 
 async function flush(): Promise<void> {
@@ -48,6 +52,26 @@ async function flush(): Promise<void> {
 }
 
 describe('SettingsPanel', () => {
+  it('shows why the quake shortcut is not active', () => {
+    const { value, quakeStatus } = model();
+    const { container, unmount } = render(
+      <SettingsPanel
+        model={value}
+        sections={SETTINGS_SECTIONS}
+        initialSection={undefined}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(container.querySelector('[data-testid="quake-error"]')).toBeNull();
+    act(() => {
+      quakeStatus.set({ registered: false, error: 'ctrl+q is already used' });
+    });
+    expect(container.querySelector('[data-testid="quake-error"]')?.textContent).toBe(
+      'ctrl+q is already used',
+    );
+    unmount();
+  });
+
   it('opens the requested section and switches sections', () => {
     const { value } = model();
     const { container, unmount } = render(

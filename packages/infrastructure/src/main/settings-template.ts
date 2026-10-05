@@ -22,6 +22,11 @@ export const SETTINGS_TEMPLATE = `// Glaceon Terminal settings. Changes apply as
   // Opens file:line:col links. {file} {line} {col} are replaced.
   // "editorCommand": "code -g {file}:{line}:{col}",
 
+  // Drop-down terminal on a global shortcut, on the screen the pointer is on.
+  // "quakeEnabled": true,
+  // "quakeShortcut": "ctrl+\`",
+  // "quakeHeight": 0.45,
+
   // Later entries win. Prefix a command with "-" to remove its default binding.
   "keybindings": [
     // { "key": "cmd+e", "command": "pane.splitRight" },

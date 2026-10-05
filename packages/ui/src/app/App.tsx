@@ -31,7 +31,7 @@ export function App({ model }: AppProps): ReactElement {
   const { actions } = model;
 
   return (
-    <div className="app">
+    <div className={model.windowKind === 'quake' ? 'app app--quake' : 'app'}>
       <TabBar
         workspace={workspace}
         sessions={sessions}

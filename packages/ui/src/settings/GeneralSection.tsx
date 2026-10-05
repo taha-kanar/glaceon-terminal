@@ -1,5 +1,6 @@
 import type { CloseOnExit, CursorStyle, Settings } from '@glaceon/domain';
 import type { ReactElement } from 'react';
+import { useStore } from '../hooks/use-store';
 import { NumberInput, Row, Select, TextInput, Toggle } from './fields';
 import type { SectionProps } from './section';
 
@@ -21,6 +22,7 @@ export function GeneralSection({ model, settings, report }: SectionProps): React
     (value: Settings[K]): void => {
       void model.update(key, value).then(report);
     };
+  const quake = useStore(model.quakeStatus);
   return (
     <div className="section">
       <h3 className="section__title">Text</h3>
@@ -140,6 +142,36 @@ export function GeneralSection({ model, settings, report }: SectionProps): React
           wide
           value={settings.editorCommand}
           onCommit={set('editorCommand')}
+        />
+      </Row>
+      <h3 className="section__title">Quake window</h3>
+      <Row label="Drop-down terminal" hint="A global shortcut shows it over any app">
+        <Toggle
+          name="quakeEnabled"
+          checked={settings.quakeEnabled}
+          onChange={set('quakeEnabled')}
+        />
+      </Row>
+      <Row label="Shortcut" hint="e.g. ctrl+` or cmd+alt+space">
+        <TextInput
+          name="quakeShortcut"
+          value={settings.quakeShortcut}
+          onCommit={set('quakeShortcut')}
+        />
+      </Row>
+      {settings.quakeEnabled && quake?.error !== undefined && (
+        <p className="section__error" role="alert" data-testid="quake-error">
+          {quake.error}
+        </p>
+      )}
+      <Row label="Height" hint="Share of the screen">
+        <NumberInput
+          name="quakeHeight"
+          min={0.2}
+          max={1}
+          step={0.05}
+          value={settings.quakeHeight}
+          onCommit={set('quakeHeight')}
         />
       </Row>
       <div className="section__footer">

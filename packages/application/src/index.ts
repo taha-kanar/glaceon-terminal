@@ -67,3 +67,5 @@ export {
   type ShellEnvironmentOptions,
 } from './pty-host/shell-environment';
 export { defaultShellProfile, FALLBACK_SHELL, type ShellProfile } from './pty-host/shell-profile';
+export type * from './quake/quake-ports';
+export * from './quake/quake-controller';

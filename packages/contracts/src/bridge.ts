@@ -6,10 +6,20 @@ export const BRIDGE_KEY = 'glaceon';
 /** Command line switch main passes to renderers when running under e2e tests. */
 export const E2E_SWITCH = '--glaceon-e2e';
 
+/** Command line switch of the quake (drop-down) window's renderer. */
+export const QUAKE_SWITCH = '--glaceon-quake';
+
 /** Settings as main sends them: always usable values plus problems with the file, if any. */
 export interface SettingsSnapshot {
   readonly settings: Settings;
   readonly problems: readonly string[];
+  /** Whether the quake shortcut could be registered (main fills this in). */
+  readonly quake?: QuakeStatus;
+}
+
+export interface QuakeStatus {
+  readonly registered: boolean;
+  readonly error?: string;
 }
 
 export interface RunCommandRequest {
@@ -88,6 +98,7 @@ export type Unsubscribe = () => void;
 /** The only surface a renderer has into the privileged world. */
 export interface GlaceonBridge {
   readonly e2e: boolean;
+  readonly windowKind: 'normal' | 'quake';
   /** Asks main for a pty-host connection; the port arrives as a window message. */
   connectPty(): Promise<void>;
   getSettings(): Promise<SettingsSnapshot>;

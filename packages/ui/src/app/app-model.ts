@@ -44,6 +44,7 @@ export interface AppModel {
   readonly arrange: ArrangeActions;
   readonly renaming: ReadableStore<RenameTarget | undefined>;
   readonly windows: ReadableStore<readonly WindowSummary[]>;
+  readonly windowKind: 'normal' | 'quake';
   readonly bindSlot: TerminalSlotBinder;
   readonly overlay: ReadableStore<OverlayState | undefined>;
   readonly closeOverlay: () => void;
