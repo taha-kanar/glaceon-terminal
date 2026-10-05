@@ -43,6 +43,7 @@ export const CommandIds = {
   searchNext: 'search.next',
   searchPrevious: 'search.previous',
   searchClose: 'search.close',
+  jobsToggle: 'jobs.toggle',
 } as const;
 
 export type BuiltinCommandId = (typeof CommandIds)[keyof typeof CommandIds];

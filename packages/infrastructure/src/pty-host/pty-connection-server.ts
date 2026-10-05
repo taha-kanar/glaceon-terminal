@@ -3,6 +3,7 @@ import type {
   HostConnection,
   PtySessionHost,
   SessionOutput,
+  SessionProcesses,
 } from '@glaceon/application';
 import {
   decodePtyClientMessage,
@@ -37,6 +38,15 @@ class PortSessionOutput implements SessionOutput {
   process(sessionId: SessionId, process: ForegroundProcess): void {
     this.#port.postMessage({ t: 'process', sid: sessionId, ...process } satisfies PtyHostMessage);
   }
+
+  processes(reports: readonly SessionProcesses[]): void {
+    const sessions = reports.map(({ sessionId, pid, processes }) => ({
+      sid: sessionId,
+      pid,
+      processes,
+    }));
+    this.#port.postMessage({ t: 'processes', sessions } satisfies PtyHostMessage);
+  }
 }
 
 function dispatch(
@@ -44,6 +54,14 @@ function dispatch(
   target: { connection: HostConnection; port: MainMessagePort },
 ): void {
   const { connection, port } = target;
+  if (message.t === 'monitor') {
+    connection.monitor(message.on);
+    return;
+  }
+  if (message.t === 'signal') {
+    connection.signal(message.pid, message.signal);
+    return;
+  }
   const sessionId = asSessionId(message.sid);
   switch (message.t) {
     case 'spawn': {

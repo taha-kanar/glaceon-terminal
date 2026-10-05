@@ -9,4 +9,6 @@ export {
   FakeSettingsSource,
   FakeTerminalViewRegistry,
   FakeWindowPort,
+  FakeProcessSignaller,
+  FakeProcessTable,
 } from './fakes';

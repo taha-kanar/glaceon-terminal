@@ -41,3 +41,4 @@ export * from './search/fuzzy';
 export * from './keybinding/keybinding-edits';
 export * from './links/links';
 export * from './editor/editor-command';
+export * from './process/process-table';

@@ -1,7 +1,9 @@
 import type {
   ForegroundProcess,
+  ProcessMonitorPort,
   PtyError,
   PtyPort,
+  ShellProcesses,
   SpawnedSession,
   SpawnRequest,
 } from '@glaceon/application';
@@ -11,8 +13,11 @@ import {
   type PtyHostMessage,
 } from '@glaceon/contracts';
 import {
+  Emitter,
   err,
   KeyedEmitter,
+  toDisposable,
+  type ProcessSignal,
   ok,
   type Disposable,
   type PtyExit,
@@ -28,7 +33,7 @@ type CwdReply = (cwd: string | undefined) => void;
 export const ACK_STEP_BYTES = 5_000;
 
 /** PtyPort over a MessagePort connected straight to the pty host. */
-export class MessagePortPtyClient implements PtyPort {
+export class MessagePortPtyClient implements PtyPort, ProcessMonitorPort {
   readonly #port: MessagePort;
   readonly #pendingSpawns = new Map<number, SpawnReply>();
   readonly #pendingCwds = new Map<number, CwdReply>();
@@ -36,6 +41,7 @@ export class MessagePortPtyClient implements PtyPort {
   readonly #data = new KeyedEmitter<string, Uint8Array>();
   readonly #exit = new KeyedEmitter<string, PtyExit>();
   readonly #process = new KeyedEmitter<string, ForegroundProcess>();
+  readonly #processTrees = new Emitter<readonly ShellProcesses[]>();
   #nextRequestId = 1;
 
   constructor(port: MessagePort) {
@@ -103,6 +109,19 @@ export class MessagePortPtyClient implements PtyPort {
     return this.#process.on(sessionId, listener);
   }
 
+  watchProcesses(listener: (shells: readonly ShellProcesses[]) => void): Disposable {
+    const subscription = this.#processTrees.on(listener);
+    if (this.#processTrees.size === 1) this.#send({ t: 'monitor', on: true });
+    return toDisposable(() => {
+      subscription.dispose();
+      if (this.#processTrees.size === 0) this.#send({ t: 'monitor', on: false });
+    });
+  }
+
+  signal(pid: number, signal: ProcessSignal): void {
+    this.#send({ t: 'signal', pid, signal });
+  }
+
   #send(message: PtyClientMessage): void {
     this.#port.postMessage(message);
   }
@@ -129,6 +148,11 @@ export class MessagePortPtyClient implements PtyPort {
         return;
       case 'spawnFailed':
         this.#settleSpawn(message.reqId, err({ message: message.message }));
+        return;
+      case 'processes':
+        this.#processTrees.emit(
+          message.sessions.map(({ pid, processes }) => ({ shellPid: pid, processes })),
+        );
         return;
       case 'cwd': {
         const reply = this.#pendingCwds.get(message.reqId);

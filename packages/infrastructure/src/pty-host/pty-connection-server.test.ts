@@ -1,6 +1,8 @@
 import { PtySessionHost } from '@glaceon/application';
 import {
   FakeProcessInspector,
+  FakeProcessSignaller,
+  FakeProcessTable,
   FakePtyProcessFactory,
   ManualScheduler,
 } from '@glaceon/application/testing';
@@ -55,6 +57,9 @@ function setup() {
     shell: { file: '/bin/zsh', args: ['-l'], cwd: '/home', env: {} },
     scheduler,
     inspector,
+    table: new FakeProcessTable(),
+    signaller: new FakeProcessSignaller(),
+    now: () => 0,
   });
   const port = new FakeMainPort();
   const connection = servePtyConnection(port, host);

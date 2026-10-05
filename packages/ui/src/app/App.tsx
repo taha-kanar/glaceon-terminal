@@ -10,6 +10,8 @@ import { SearchBar } from '../search/SearchBar';
 import { SETTINGS_SECTIONS } from '../settings/sections';
 import { SettingsPanel } from '../settings/SettingsPanel';
 import { TabBar } from '../tabs/TabBar';
+import { JobsPanel } from '../jobs/JobsPanel';
+import { ProcessIndicator } from '../jobs/ProcessPopover';
 import type { AppModel } from './app-model';
 
 export interface AppProps {
@@ -36,6 +38,7 @@ export function App({ model }: AppProps): ReactElement {
         arrange={model.arrange}
         renaming={renaming}
         newTabLabel={model.labelFor(CommandIds.tabNew)}
+        trailing={<ProcessIndicator workspace={workspace} sessions={sessions} model={model.jobs} />}
       />
       {problems.length > 0 && (
         <ProblemsBanner problems={problems} onOpenSettings={actions.openSettingsFile} />
@@ -61,6 +64,14 @@ export function App({ model }: AppProps): ReactElement {
           model={model.settingsPanel}
           sections={SETTINGS_SECTIONS}
           initialSection={overlay.target}
+          onClose={model.closeOverlay}
+        />
+      )}
+      {overlay?.kind === 'jobs' && (
+        <JobsPanel
+          workspace={workspace}
+          sessions={sessions}
+          model={model.jobs}
           onClose={model.closeOverlay}
         />
       )}

@@ -1,6 +1,8 @@
 import {
+  descendants,
   err,
   ok,
+  type ProcessSignal,
   type Disposable,
   type Result,
   type SessionId,
@@ -9,9 +11,10 @@ import {
 import type { Scheduler } from '../ports/scheduler';
 import type { PtyError, SpawnedSession, SpawnRequest } from '../terminal/pty-port';
 import type { ProcessInspector } from './process-inspector';
+import type { ProcessMonitor, ProcessSignaller } from './process-monitor';
 import { HostSession, type FlowSettings } from './host-session';
 import type { PtyProcess, PtyProcessFactory } from './pty-process';
-import type { SessionOutput } from './session-output';
+import type { SessionOutput, SessionProcesses } from './session-output';
 import type { SessionRegistry } from './session-registry';
 import type { ShellProfile } from './shell-profile';
 
@@ -20,12 +23,14 @@ export interface HostServices {
   readonly shell: ShellProfile;
   readonly scheduler: Scheduler;
   readonly inspector: ProcessInspector;
+  readonly signaller: ProcessSignaller;
   readonly flow?: FlowSettings;
 }
 
 export interface HostConnectionDeps extends HostServices {
   readonly registry: SessionRegistry;
   readonly output: SessionOutput;
+  readonly monitor: ProcessMonitor;
 }
 
 /** How often foreground processes are polled, and how soon after Enter they are re-checked. */
@@ -41,6 +46,8 @@ export class HostConnection {
   readonly #deps: HostConnectionDeps;
   readonly #owned = new Map<SessionId, HostSession>();
   readonly #poll: Disposable;
+  #monitoring: Disposable | undefined;
+  #reports: readonly SessionProcesses[] = [];
   #closed = false;
 
   constructor(deps: HostConnectionDeps) {
@@ -94,10 +101,38 @@ export class HostConnection {
     }
   }
 
+  /** Starts or stops streaming the process trees of this connection's sessions. */
+  monitor(on: boolean): void {
+    if (this.#closed || on === (this.#monitoring !== undefined)) return;
+    if (!on) {
+      this.#monitoring?.dispose();
+      this.#monitoring = undefined;
+      return;
+    }
+    this.#monitoring = this.#deps.monitor.subscribe((processes) => {
+      this.#reports = [...this.#owned].map(([sessionId, session]) => ({
+        sessionId,
+        pid: session.pid,
+        processes: descendants(processes, session.pid),
+      }));
+      this.#deps.output.processes(this.#reports);
+    });
+  }
+
+  /** Signals a process, but only one in the latest reported tree of this connection's sessions. */
+  signal(pid: number, signal: ProcessSignal): boolean {
+    const owned = this.#reports.some((report) =>
+      report.processes.some((process) => process.pid === pid),
+    );
+    return owned && this.#deps.signaller.signal(pid, signal);
+  }
+
   close(): void {
     if (this.#closed) return;
     this.#closed = true;
     this.#poll.dispose();
+    this.#monitoring?.dispose();
+    this.#monitoring = undefined;
     for (const session of this.#owned.values()) session.kill();
   }
 

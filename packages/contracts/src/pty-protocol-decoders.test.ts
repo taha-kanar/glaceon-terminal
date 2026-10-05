@@ -69,3 +69,20 @@ describe('decodePtyHostControlMessage', () => {
     expect(decodePtyHostControlMessage({ t: 'reboot', connectionId: 'w1' })).toBeUndefined();
   });
 });
+
+describe('process monitoring messages', () => {
+  it('decodes monitor and signal requests without a session id', () => {
+    expect(decodePtyClientMessage({ t: 'monitor', on: true })).toEqual({ t: 'monitor', on: true });
+    expect(decodePtyClientMessage({ t: 'monitor', on: 'yes' })).toBeUndefined();
+    expect(decodePtyClientMessage({ t: 'signal', pid: 12, signal: 'SIGINT' })).toBeDefined();
+    expect(decodePtyClientMessage({ t: 'signal', pid: 12, signal: 'SIGHUP' })).toBeUndefined();
+    expect(decodePtyClientMessage({ t: 'signal', pid: '12', signal: 'SIGINT' })).toBeUndefined();
+  });
+
+  it('decodes process reports', () => {
+    const report = { t: 'processes', sessions: [{ sid: 'a', pid: 1, processes: [] }] };
+    expect(decodePtyHostMessage(report)).toEqual(report);
+    expect(decodePtyHostMessage({ t: 'processes', sessions: [{ sid: 'a' }] })).toBeUndefined();
+    expect(decodePtyHostMessage({ t: 'processes', sessions: 'x' })).toBeUndefined();
+  });
+});

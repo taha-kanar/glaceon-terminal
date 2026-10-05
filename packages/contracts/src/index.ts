@@ -17,7 +17,12 @@ export {
   PTY_PORT_WINDOW_MESSAGE,
   RendererChannel,
 } from './ipc';
-export type { PtyClientMessage, PtyHostControlMessage, PtyHostMessage } from './pty-protocol';
+export type {
+  PtyClientMessage,
+  PtyHostControlMessage,
+  PtyHostMessage,
+  SessionProcessReport,
+} from './pty-protocol';
 export {
   decodePtyClientMessage,
   decodePtyHostControlMessage,

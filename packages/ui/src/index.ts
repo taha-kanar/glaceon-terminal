@@ -1,6 +1,7 @@
 export { App, type AppProps } from './app/App';
 export type { AppActions, AppModel, TerminalSlotBinder } from './app/app-model';
 export type { ArrangeActions } from './tabs/arrange-actions';
+export type { JobsModel } from './jobs/jobs-model';
 export { useStore } from './hooks/use-store';
 export type {
   KeybindingsModel,

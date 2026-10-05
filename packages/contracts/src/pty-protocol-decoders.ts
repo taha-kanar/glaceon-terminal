@@ -1,3 +1,4 @@
+import { PROCESS_SIGNALS } from '@glaceon/domain';
 import { isFiniteNumber, isNonEmptyString, isOptional, isRecord } from './guards';
 import type { PtyClientMessage, PtyHostControlMessage, PtyHostMessage } from './pty-protocol';
 
@@ -7,7 +8,17 @@ import type { PtyClientMessage, PtyHostControlMessage, PtyHostMessage } from './
  * `undefined` and are dropped by the receiver.
  */
 export function decodePtyClientMessage(value: unknown): PtyClientMessage | undefined {
-  if (!isRecord(value) || !isNonEmptyString(value['sid'])) return undefined;
+  if (!isRecord(value)) return undefined;
+  if (value['t'] === 'monitor') {
+    return typeof value['on'] === 'boolean' ? (value as PtyClientMessage) : undefined;
+  }
+  if (value['t'] === 'signal') {
+    const signal = value['signal'];
+    return isFiniteNumber(value['pid']) && PROCESS_SIGNALS.some((s) => s === signal)
+      ? (value as PtyClientMessage)
+      : undefined;
+  }
+  if (!isNonEmptyString(value['sid'])) return undefined;
   const message = value as PtyClientMessage;
   switch (message.t) {
     case 'spawn':
@@ -27,6 +38,8 @@ export function decodePtyClientMessage(value: unknown): PtyClientMessage | undef
       return isFiniteNumber(message.reqId) ? message : undefined;
     case 'kill':
       return message;
+    case 'monitor':
+    case 'signal':
     default:
       return undefined;
   }
@@ -71,6 +84,17 @@ export function decodePtyHostMessage(value: unknown): PtyHostMessage | undefined
       return isNonEmptyString(message.sid) &&
         typeof message.name === 'string' &&
         typeof message.busy === 'boolean'
+        ? message
+        : undefined;
+    case 'processes':
+      return Array.isArray(message.sessions) &&
+        message.sessions.every(
+          (report) =>
+            isRecord(report) &&
+            isNonEmptyString(report['sid']) &&
+            isFiniteNumber(report['pid']) &&
+            Array.isArray(report['processes']),
+        )
         ? message
         : undefined;
     case 'spawned':

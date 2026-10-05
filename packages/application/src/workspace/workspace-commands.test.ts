@@ -9,6 +9,7 @@ import { TerminalSessionService } from '../terminal/terminal-session-service';
 import { FakePtyPort, FakeWindowPort, SequentialIdGenerator } from '../testing';
 import { CoreCommands } from './workspace-commands';
 import { ContextKeys } from '../keybinding/context-keys';
+import { JobCommands } from '../jobs/job-commands';
 import { OverlayCommands } from '../overlay/overlay-commands';
 import { OverlayService } from '../overlay/overlay-service';
 import { ThemeCommands } from '../theme/theme-commands';
@@ -49,6 +50,7 @@ describe('CoreCommands', () => {
     );
     const overlay = new OverlayService(new ContextKeys());
     registry.registerContribution(new OverlayCommands(overlay));
+    registry.registerContribution(new JobCommands(overlay));
     registry.registerContribution(
       new ThemeCommands({ settings, writer: new FakeSettingsWriter(settings), overlay }),
     );

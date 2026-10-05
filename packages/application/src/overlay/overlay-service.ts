@@ -2,7 +2,7 @@ import { Emitter, type Disposable } from '@glaceon/domain';
 import type { ContextKeys } from '../keybinding/context-keys';
 import { ObservableStore, type ReadableStore } from '../store/store';
 
-export type OverlayKind = 'palette' | 'settings';
+export type OverlayKind = 'palette' | 'settings' | 'jobs';
 
 export interface OverlayState {
   readonly kind: OverlayKind;

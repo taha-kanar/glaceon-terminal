@@ -52,12 +52,14 @@ const BINDINGS: readonly KeybindingEntry[] = [
   { key: 'cmd+g', command: C.searchNext },
   { key: 'cmd+shift+g', command: C.searchPrevious },
   { key: 'escape', command: C.searchClose, when: 'searchOpen' },
+  { key: 'cmd+shift+j', command: C.jobsToggle },
 ];
 
 /** Commands that keep working while the palette or settings panel is open. */
 const ALWAYS_AVAILABLE = new Set<string>([
   C.paletteToggle,
   C.settingsOpen,
+  C.jobsToggle,
   C.windowNew,
   C.windowClose,
   C.fontIncrease,

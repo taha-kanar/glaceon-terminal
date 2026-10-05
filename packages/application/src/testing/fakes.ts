@@ -5,12 +5,15 @@ import {
   type Disposable,
   type PaneId,
   type PartialSettings,
+  type ProcessSample,
+  type ProcessSignal,
   type Result,
   type Settings,
 } from '@glaceon/domain';
 import type { TerminalViewRegistry } from '../ports/terminal-view-registry';
 import type { WindowPort } from '../ports/window-port';
 import type { ProcessInspector } from '../pty-host/process-inspector';
+import type { ProcessSignaller, ProcessTable } from '../pty-host/process-monitor';
 import type { WritableSettingsSource } from '../settings/settings-source';
 import type { SettingsWriter } from '../settings/settings-writer';
 import type { ObservableStore } from '../store/store';
@@ -106,5 +109,25 @@ export class FakeSettingsWriter implements SettingsWriter {
     this.updates.push({ key, value });
     this.#store.update((settings) => ({ ...settings, [key]: value }));
     return Promise.resolve(ok(undefined));
+  }
+}
+
+export class FakeProcessTable implements ProcessTable {
+  rows: ProcessSample[] = [];
+  failing = false;
+  calls = 0;
+
+  sample(): Promise<readonly ProcessSample[] | undefined> {
+    this.calls++;
+    return Promise.resolve(this.failing ? undefined : [...this.rows]);
+  }
+}
+
+export class FakeProcessSignaller implements ProcessSignaller {
+  readonly sent: { pid: number; signal: ProcessSignal }[] = [];
+
+  signal(pid: number, signal: ProcessSignal): boolean {
+    this.sent.push({ pid, signal });
+    return true;
   }
 }

@@ -1,9 +1,15 @@
-import { asSessionId, type PtyExit, type SessionId } from '@glaceon/domain';
+import { asSessionId, type ProcessSample, type PtyExit, type SessionId } from '@glaceon/domain';
 import { describe, expect, it } from 'vitest';
-import { FakeProcessInspector, FakePtyProcessFactory, ManualScheduler } from '../testing';
+import {
+  FakeProcessInspector,
+  FakeProcessSignaller,
+  FakeProcessTable,
+  FakePtyProcessFactory,
+  ManualScheduler,
+} from '../testing';
 import type { ForegroundProcess } from '../terminal/pty-port';
 import { PtySessionHost } from './pty-session-host';
-import type { SessionOutput } from './session-output';
+import type { SessionOutput, SessionProcesses } from './session-output';
 import type { ShellProfile } from './shell-profile';
 
 const shell: ShellProfile = { file: '/bin/zsh', args: ['-l'], cwd: '/Users/me', env: { A: '1' } };
@@ -11,7 +17,7 @@ const shell: ShellProfile = { file: '/bin/zsh', args: ['-l'], cwd: '/Users/me', 
 class RecordingOutput implements SessionOutput {
   readonly chunks: { sessionId: SessionId; text: string }[] = [];
   readonly exits: { sessionId: SessionId; exit: PtyExit }[] = [];
-  readonly processes: { sessionId: SessionId; name: string; busy: boolean }[] = [];
+  readonly foreground: { sessionId: SessionId; name: string; busy: boolean }[] = [];
 
   data(sessionId: SessionId, chunk: Uint8Array): void {
     this.chunks.push({ sessionId, text: new TextDecoder().decode(chunk) });
@@ -22,7 +28,13 @@ class RecordingOutput implements SessionOutput {
   }
 
   process(sessionId: SessionId, process: ForegroundProcess): void {
-    this.processes.push({ sessionId, ...process });
+    this.foreground.push({ sessionId, ...process });
+  }
+
+  readonly reports: (readonly SessionProcesses[])[] = [];
+
+  processes(reports: readonly SessionProcesses[]): void {
+    this.reports.push(reports);
   }
 }
 
@@ -30,14 +42,28 @@ function setup() {
   const processes = new FakePtyProcessFactory();
   const scheduler = new ManualScheduler();
   const inspector = new FakeProcessInspector();
+  const table = new FakeProcessTable();
+  const signaller = new FakeProcessSignaller();
+  let now = 0;
   const host = new PtySessionHost({
     processes,
     shell,
     scheduler,
     inspector,
+    table,
+    signaller,
+    now: () => now,
     flow: { batch: { delayMs: 5, maxBytes: 8 }, watermarks: { high: 10, low: 4 } },
   });
-  return { processes, host, scheduler, inspector };
+  const clock = {
+    advance: async (ms: number) => {
+      now += ms;
+      scheduler.advance(ms);
+      await Promise.resolve();
+      await Promise.resolve();
+    },
+  };
+  return { processes, host, scheduler, inspector, table, signaller, clock };
 }
 
 const size = { cols: 80, rows: 24 };
@@ -208,18 +234,18 @@ describe('HostConnection output', () => {
     target.foregroundProcess = 'bash';
     scheduler.advance(1000);
     await settle();
-    expect(output.processes).toEqual([{ sessionId: 'a', name: 'bash', busy: false }]);
+    expect(output.foreground).toEqual([{ sessionId: 'a', name: 'bash', busy: false }]);
 
     target.foregroundProcess = 'vim';
     connection.write(asSessionId('a'), 'vim\r');
     scheduler.advance(150);
     await settle();
-    expect(output.processes.at(-1)).toEqual({ sessionId: 'a', name: 'vim', busy: true });
+    expect(output.foreground.at(-1)).toEqual({ sessionId: 'a', name: 'vim', busy: true });
 
     target.foregroundProcess = 'bash';
     scheduler.advance(1000);
     await settle();
-    expect(output.processes.map((p) => p.busy)).toEqual([false, true, false]);
+    expect(output.foreground.map((p) => p.busy)).toEqual([false, true, false]);
   });
 
   it('falls back to the shell file name when the shell process cannot be inspected', async () => {
@@ -234,7 +260,7 @@ describe('HostConnection output', () => {
     target.foregroundProcess = 'zsh';
     scheduler.advance(1000);
     await settle();
-    expect(output.processes.map(({ name, busy }) => [name, busy])).toEqual([
+    expect(output.foreground.map(({ name, busy }) => [name, busy])).toEqual([
       ['top', true],
       ['zsh', false],
     ]);
@@ -256,5 +282,72 @@ describe('HostConnection output', () => {
     expect(scheduler.pending).toBe(1);
     host.closeConnection(connection);
     expect(scheduler.pending).toBe(0);
+  });
+});
+
+const row = (pid: number, ppid: number, extra: Partial<ProcessSample> = {}): ProcessSample => ({
+  pid,
+  ppid,
+  pgid: pid,
+  tpgid: 0,
+  tty: 'ttys001',
+  stat: 'S',
+  cpuTimeMs: 0,
+  memoryKb: 1000,
+  args: `/bin/p${String(pid)}`,
+  ...extra,
+});
+
+describe('process monitoring', () => {
+  it('polls only while a connection monitors and reports each session tree', async () => {
+    const { host, table, clock } = setup();
+    const output = new RecordingOutput();
+    const connection = host.openConnection(output);
+    connection.spawn({ sessionId: asSessionId('a'), size });
+    table.rows = [row(1000, 1), row(1001, 1000, { pgid: 1001, tpgid: 1001 }), row(77, 1)];
+
+    await clock.advance(5000);
+    expect(table.calls).toBe(0);
+
+    connection.monitor(true);
+    await clock.advance(0);
+    expect(output.reports.at(-1)?.[0]?.processes.map((p) => p.pid)).toEqual([1000, 1001]);
+    expect(output.reports.at(-1)?.[0]?.processes[1]).toMatchObject({
+      name: 'p1001',
+      foreground: true,
+    });
+
+    table.rows = [row(1000, 1), row(1001, 1000, { cpuTimeMs: 750 })];
+    await clock.advance(1500);
+    expect(output.reports.at(-1)?.[0]?.processes[1]?.cpu).toBeCloseTo(50);
+
+    connection.monitor(false);
+    const calls = table.calls;
+    await clock.advance(10_000);
+    expect(table.calls).toBe(calls);
+  });
+
+  it('signals only processes in its own sessions', async () => {
+    const { host, table, signaller, clock } = setup();
+    const connection = host.openConnection(new RecordingOutput());
+    connection.spawn({ sessionId: asSessionId('a'), size });
+    table.rows = [row(1000, 1), row(1001, 1000), row(77, 1)];
+    expect(connection.signal(1001, 'SIGINT')).toBe(false);
+    connection.monitor(true);
+    await clock.advance(0);
+    expect(connection.signal(1001, 'SIGINT')).toBe(true);
+    expect(connection.signal(77, 'SIGKILL')).toBe(false);
+    expect(signaller.sent).toEqual([{ pid: 1001, signal: 'SIGINT' }]);
+    host.closeConnection(connection);
+  });
+
+  it('skips failed samples', async () => {
+    const { host, table, clock } = setup();
+    const output = new RecordingOutput();
+    const connection = host.openConnection(output);
+    table.failing = true;
+    connection.monitor(true);
+    await clock.advance(1500);
+    expect(output.reports).toEqual([]);
   });
 });

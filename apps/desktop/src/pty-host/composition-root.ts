@@ -4,6 +4,8 @@ import { decodePtyHostControlMessage } from '@glaceon/contracts';
 import type { Disposable } from '@glaceon/domain';
 import {
   MacProcessInspector,
+  MacProcessTable,
+  NodeProcessSignaller,
   NodePtyProcessFactory,
   servePtyConnection,
   TimerScheduler,
@@ -25,6 +27,9 @@ export function createPtyHostCompositionRoot(): PtyHostCompositionRoot {
     shell: defaultShellProfile({ env: process.env, shellEnv, homeDirectory: homedir() }),
     scheduler: new TimerScheduler(),
     inspector: new MacProcessInspector(),
+    table: new MacProcessTable(),
+    signaller: new NodeProcessSignaller(),
+    now: () => performance.now(),
   });
   const connections = new Map<string, Disposable>();
 

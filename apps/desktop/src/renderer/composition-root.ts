@@ -9,6 +9,8 @@ import {
   CoreCommands,
   FontZoom,
   INPUT_CAPTURE_CONTEXT,
+  JobCommands,
+  JobService,
   KeybindingService,
   LinkService,
   SearchService,
@@ -32,15 +34,15 @@ import {
   requestPtyPort,
   XtermViewRegistry,
 } from '@glaceon/infrastructure/renderer';
-import {
-  App,
-  type AppActions,
-  type AppModel,
-  type ArrangeActions,
-  type TerminalSlotBinder,
-} from '@glaceon/ui';
+import { App, type AppActions, type AppModel, type TerminalSlotBinder } from '@glaceon/ui';
 import { createElement, type ReactElement } from 'react';
 import { linkOpenerFor, settingsWriterFor, windowPortFor } from './bridge-adapters';
+import {
+  arrangeActionsFor,
+  jobsModelFor,
+  searchModelFor,
+  settingsPanelModelFor,
+} from './ui-adapters';
 import { createE2EProbe } from './e2e-probe';
 import { installKeyboardHandler } from './keyboard';
 import { applyTheme } from './theme-applier';
@@ -122,6 +124,7 @@ export async function createRendererCompositionRoot(
     new CoreCommands({ workspace, sessions, fontZoom, window: windowPort }),
   );
   registry.registerContribution(new OverlayCommands(overlay));
+  registry.registerContribution(new JobCommands(overlay));
   registry.registerContribution(themeCommands);
   const arrangementCommands = new ArrangementCommands(arrangement);
   registry.registerContribution(arrangementCommands);
@@ -163,6 +166,7 @@ export async function createRendererCompositionRoot(
     const open = search.state.get();
     if (open !== undefined && open.pane !== workspace.activePane) search.close();
   });
+  const jobs = new JobService({ monitor: pty, sessions: sessions.info });
   const links = new LinkService({ opener: linkOpenerFor(bridge), sessions, toasts });
   views.onLinkActivated(({ pane, link, event }) => {
     // Plain clicks select text; ⌘-click opens.
@@ -205,31 +209,6 @@ export async function createRendererCompositionRoot(
     openSettingsFile: () => windowPort.openSettingsFile(),
   };
 
-  const arrange: ArrangeActions = {
-    beginRename: (target) => arrangement.beginRename(target),
-    commitRename: (name) => {
-      arrangement.commitRename(name);
-      refocus();
-    },
-    cancelRename: () => {
-      arrangement.cancelRename();
-      refocus();
-    },
-    setColor: (tab, color) => arrangement.setColor(color, tab),
-    togglePin: (tab) => arrangement.togglePin(tab),
-    toggleLock: (tab) => arrangement.toggleLock(tab),
-    moveTab: (tab, index) => arrangement.moveTab(tab, index),
-    newGroup: (tab) => arrangement.newGroup(tab),
-    setGroup: (tab, group) => arrangement.setGroup(group, tab),
-    toggleGroupCollapsed: (group) => arrangement.toggleGroupCollapsed(group),
-    setGroupColor: (group, color) => arrangement.setGroupColor(group, color),
-    ungroup: (group) => arrangement.ungroup(group),
-    movePane: (source, target, zone) => {
-      arrangement.movePane(source, { target, zone });
-      refocus();
-    },
-  };
-
   const model: AppModel = {
     workspace: workspaceStore,
     sessions: sessions.info,
@@ -238,39 +217,23 @@ export async function createRendererCompositionRoot(
     confirmation: confirmation.current,
     labelFor: (command) => keybindings.resolver.get().labelFor(command),
     actions,
-    arrange,
+    arrange: arrangeActionsFor(arrangement, refocus),
     renaming: arrangement.renaming,
     bindSlot,
     overlay: overlay.state,
     closeOverlay: () => overlay.close(),
     palette: { items: (query) => palette.items(query), run: (item) => palette.run(item) },
-    settingsPanel: {
+    settingsPanel: settingsPanelModelFor({
       settings: baseSettings,
-      update: (key, value) => writer.update(key, value),
-      themes: {
-        draft: themeEditor.draft,
-        begin: (id) => themeEditor.begin(id),
-        setColor: (key, color) => themeEditor.setColor(key, color),
-        rename: (name) => themeEditor.rename(name),
-        save: () => themeEditor.save(),
-        cancel: () => themeEditor.cancel(),
-        remove: (id) => themeEditor.remove(id),
-      },
-      keybindings: {
-        resolver: keybindings.resolver,
-        commands: () => registry.list(),
-        setCapture: (capturing) => context.set(INPUT_CAPTURE_CONTEXT, capturing),
-      },
+      writer,
+      themeEditor,
+      keybindings,
+      registry,
+      context,
       openSettingsFile: () => windowPort.openSettingsFile(),
-    },
-    search: {
-      state: search.state,
-      setQuery: (query) => search.setQuery(query),
-      toggle: (option) => search.toggle(option),
-      next: () => search.next(),
-      previous: () => search.previous(),
-      close: () => search.close(),
-    },
+    }),
+    search: searchModelFor(search),
+    jobs: jobsModelFor(jobs, workspace),
     toasts: { items: toasts.toasts, dismiss: (id) => toasts.dismiss(id) },
   };
 
