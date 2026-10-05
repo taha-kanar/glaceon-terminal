@@ -11,6 +11,9 @@ import {
   type OperationResult,
   type SettingsSnapshot,
   type SettingsUpdateResult,
+  type TabImportRequest,
+  type TabImportResult,
+  type WindowSummaryWire,
   type Unsubscribe,
 } from '@glaceon/contracts';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
@@ -50,6 +53,26 @@ const bridge: GlaceonBridge = {
       if (request !== undefined) listener(request);
     }),
   onCloseRequested: (listener) => listen(RendererChannel.closeRequested, () => listener()),
+  transferTab: (request) =>
+    ipcRenderer.invoke(MainInvokeChannel.tabTransfer, request) as Promise<boolean>,
+  onImportTab: (listener) =>
+    listen(RendererChannel.tabImport, (payload) => {
+      const { transferId, payload: tab } = payload as TabImportRequest;
+      const reply = (ok: boolean): void => {
+        ipcRenderer.send(MainSendChannel.tabImportResult, {
+          transferId,
+          ok,
+        } satisfies TabImportResult);
+      };
+      listener(tab).then(reply, () => {
+        reply(false);
+      });
+    }),
+  windowReady: () => ipcRenderer.invoke(MainInvokeChannel.windowReady) as Promise<number>,
+  onWindowsChanged: (listener) =>
+    listen(RendererChannel.windowsChanged, (payload) => {
+      listener(payload as readonly WindowSummaryWire[]);
+    }),
   newWindow: () => {
     ipcRenderer.send(MainSendChannel.windowNew);
   },

@@ -10,6 +10,7 @@ import {
 } from '@glaceon/domain';
 import type { Scheduler } from '../ports/scheduler';
 import type { PtyError, SpawnedSession, SpawnRequest } from '../terminal/pty-port';
+import type { DetachedSessions } from './detached-sessions';
 import type { ProcessInspector } from './process-inspector';
 import type { ProcessMonitor, ProcessSignaller } from './process-monitor';
 import { HostSession, type FlowSettings } from './host-session';
@@ -31,6 +32,7 @@ export interface HostConnectionDeps extends HostServices {
   readonly registry: SessionRegistry;
   readonly output: SessionOutput;
   readonly monitor: ProcessMonitor;
+  readonly detachedSessions: DetachedSessions;
 }
 
 /** How often foreground processes are polled, and how soon after Enter they are re-checked. */
@@ -99,6 +101,38 @@ export class HostConnection {
     } catch {
       return undefined;
     }
+  }
+
+  /**
+   * Gives up a session without killing it so another connection can attach it. Output that
+   * arrives meanwhile is buffered; `detached` is reported after all earlier output.
+   */
+  detach(sessionId: SessionId): boolean {
+    const session = this.#owned.get(sessionId);
+    if (session === undefined) return false;
+    this.#owned.delete(sessionId);
+    const buffer = this.#deps.detachedSessions.park(sessionId, session);
+    session.detach(buffer, () => {
+      this.#deps.registry.remove(sessionId);
+    });
+    this.#deps.output.detached(sessionId);
+    return true;
+  }
+
+  /** Takes over a detached session (from this or another connection). */
+  attach(sessionId: SessionId): Result<{ readonly pid: number }, PtyError> {
+    if (this.#closed) return err({ message: 'Connection is closed' });
+    const parked = this.#deps.detachedSessions.claim(sessionId);
+    if (parked === undefined) return err({ message: `Session ${sessionId} is not detached` });
+    this.#owned.set(sessionId, parked.session);
+    parked.session.attach(parked.buffer, {
+      output: this.#deps.output,
+      onExit: () => {
+        this.#deps.registry.remove(sessionId);
+        this.#owned.delete(sessionId);
+      },
+    });
+    return ok({ pid: parked.session.pid });
   }
 
   /** Starts or stops streaming the process trees of this connection's sessions. */

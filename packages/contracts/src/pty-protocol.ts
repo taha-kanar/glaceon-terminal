@@ -16,6 +16,9 @@ export type PtyClientMessage =
   /** Output bytes the renderer has finished rendering (flow control). */
   | { readonly t: 'ack'; readonly sid: string; readonly bytes: number }
   | { readonly t: 'cwd'; readonly reqId: number; readonly sid: string }
+  /** Hand the session over to another window (it keeps running, output is buffered). */
+  | { readonly t: 'detach'; readonly sid: string }
+  | { readonly t: 'attach'; readonly reqId: number; readonly sid: string }
   /** Start or stop streaming process trees (`processes` messages). */
   | { readonly t: 'monitor'; readonly on: boolean }
   /** Signals a process in one of the connection's sessions. */
@@ -35,7 +38,15 @@ export type PtyHostMessage =
   | ({ readonly t: 'exit'; readonly sid: string } & PtyExit)
   | { readonly t: 'process'; readonly sid: string; readonly name: string; readonly busy: boolean }
   | { readonly t: 'cwd'; readonly reqId: number; readonly cwd?: string }
-  | { readonly t: 'processes'; readonly sessions: readonly SessionProcessReport[] };
+  | { readonly t: 'processes'; readonly sessions: readonly SessionProcessReport[] }
+  /** All output sent before the detach has been delivered. */
+  | { readonly t: 'detached'; readonly sid: string }
+  | {
+      readonly t: 'attached';
+      readonly reqId: number;
+      readonly pid?: number;
+      readonly message?: string;
+    };
 
 /** main → pty-host over the utility process parent port. */
 export type PtyHostControlMessage =

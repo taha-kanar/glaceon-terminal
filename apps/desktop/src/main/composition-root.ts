@@ -11,6 +11,7 @@ import {
   type SettingsUpdateResult,
   decodeSettingsUpdateRequest,
   decodeLinkOpenRequest,
+  decodeTabImportResult,
   type OperationResult,
 } from '@glaceon/contracts';
 import { CommandIds, type Settings } from '@glaceon/domain';
@@ -19,6 +20,9 @@ import {
   EditorLauncher,
   SystemLinkOpener,
   JsoncSettingsSource,
+  decodeTabTransferRequest,
+  TabTransferCoordinator,
+  type TransferWindow,
   PtyHostSupervisor,
   TerminalWindow,
   type RendererSource,
@@ -44,6 +48,7 @@ function configDirectory(): string {
 /** Wires the main process. The only place that knows concrete classes. */
 export function createMainCompositionRoot(): MainCompositionRoot {
   const e2e = process.env['GLACEON_E2E'] === '1' || process.argv.includes(E2E_SWITCH);
+  const hidden = e2e && process.env['GLACEON_E2E_HIDDEN'] === '1';
   const windows = new Map<number, TerminalWindow>();
   const settingsSource = new JsoncSettingsSource({ path: join(configDirectory(), 'config.json') });
   const settings = new SettingsService(settingsSource);
@@ -64,19 +69,55 @@ export function createMainCompositionRoot(): MainCompositionRoot {
     openPath: (path) => shell.openPath(path),
   });
 
-  const openWindow = (): void => {
+  const broadcastWindows = (): void => {
+    for (const window of windows.values()) {
+      window.browserWindow.webContents.send(
+        RendererChannel.windowsChanged,
+        transfers.summaries(window.id),
+      );
+    }
+  };
+
+  const openWindow = (at?: { readonly x: number; readonly y: number }): TerminalWindow => {
     const window = new TerminalWindow({
       preloadPath: join(import.meta.dirname, '../preload/index.cjs'),
       renderer: rendererSource(),
       e2e,
+      hidden,
+      // A torn-off tab's window appears under the pointer, title bar first.
+      ...(at === undefined ? {} : { position: { x: at.x - 160, y: at.y - 16 } }),
     });
     const id = window.id;
     windows.set(id, window);
     window.browserWindow.on('closed', () => {
       windows.delete(id);
       ptyHost.disconnect(String(id));
+      transfers.closed(id);
+      broadcastWindows();
     });
+    return window;
   };
+
+  const asTransferWindow = (window: TerminalWindow): TransferWindow => ({
+    id: window.id,
+    contains: (point) => window.contains(point),
+    importTab: (request) => {
+      window.browserWindow.webContents.send(RendererChannel.tabImport, request);
+    },
+    focus: () => {
+      window.browserWindow.focus();
+    },
+  });
+
+  const transfers = new TabTransferCoordinator({
+    windows: () => [...windows.values()].map(asTransferWindow),
+    openWindow: (at) => asTransferWindow(openWindow(at)),
+    setTimeout: (callback, ms) => {
+      const timer = setTimeout(callback, ms);
+      return { dispose: () => clearTimeout(timer) };
+    },
+    timeoutMs: Number(process.env['GLACEON_TRANSFER_TIMEOUT_MS'] ?? 15_000),
+  });
 
   const windowOf = (event: IpcMainEvent | Electron.IpcMainInvokeEvent): TerminalWindow => {
     const window = windows.get(event.sender.id);
@@ -132,6 +173,21 @@ export function createMainCompositionRoot(): MainCompositionRoot {
         return result.ok ? { ok: true } : { ok: false, error: result.error };
       },
     );
+    ipcMain.handle(MainInvokeChannel.tabTransfer, (event, payload: unknown) => {
+      const request = decodeTabTransferRequest(payload);
+      return request === undefined ? false : transfers.transfer(windowOf(event).id, request);
+    });
+    ipcMain.handle(MainInvokeChannel.windowReady, (event) => {
+      const ready = transfers.ready(windowOf(event).id);
+      // Imports go out after the reply, so the renderer knows not to open a tab of its own.
+      setImmediate(ready.flush);
+      broadcastWindows();
+      return ready.pending;
+    });
+    ipcMain.on(MainSendChannel.tabImportResult, (event, payload: unknown) => {
+      const result = decodeTabImportResult(payload);
+      if (result !== undefined) transfers.result(windowOf(event).id, result);
+    });
     ipcMain.on(MainSendChannel.windowNew, () => {
       openWindow();
     });
@@ -145,6 +201,7 @@ export function createMainCompositionRoot(): MainCompositionRoot {
 
   return {
     async start() {
+      if (hidden) app.dock?.hide();
       ptyHost.start();
       await settingsSource.ensureExists().catch((error: unknown) => {
         console.error('[main] cannot create settings file', error);

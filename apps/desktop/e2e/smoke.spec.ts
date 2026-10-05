@@ -25,11 +25,15 @@ test('renderer is sandboxed and isolated', async ({ window }) => {
       'getSettings',
       'newWindow',
       'onCloseRequested',
+      'onImportTab',
       'onRunCommand',
       'onSettingsChanged',
+      'onWindowsChanged',
       'openLink',
       'openSettingsFile',
+      'transferTab',
       'updateSetting',
+      'windowReady',
     ],
   });
 });

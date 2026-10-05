@@ -40,6 +40,10 @@ export class XtermViewRegistry implements TerminalViewRegistry, SearchTargets {
     return this.#entries.size;
   }
 
+  snapshot(pane: PaneId): string | undefined {
+    return this.#entries.get(pane)?.view.serialize();
+  }
+
   get(pane: PaneId): XtermTerminalView | undefined {
     return this.#entries.get(pane)?.view;
   }

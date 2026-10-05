@@ -15,6 +15,8 @@ import { OverlayService } from '../overlay/overlay-service';
 import { ThemeCommands } from '../theme/theme-commands';
 import { SearchService } from '../search/search-service';
 import { ArrangementCommands } from './arrangement-commands';
+import { TabTransferService } from '../transfer/tab-transfer-service';
+import { TransferCommands } from '../transfer/transfer-commands';
 import { ArrangementService } from './arrangement-service';
 import { FakeSettingsWriter } from '../testing';
 import { WorkspaceService } from './workspace-service';
@@ -46,6 +48,20 @@ describe('CoreCommands', () => {
           sessions,
           notify: () => undefined,
         }),
+      ),
+    );
+    registry.registerContribution(
+      new TransferCommands(
+        new TabTransferService({
+          store,
+          workspace,
+          sessions,
+          views: { snapshot: () => undefined },
+          port: { send: () => Promise.resolve(false) },
+          ids: new SequentialIdGenerator(),
+          notify: () => undefined,
+        }),
+        new ObservableStore([]),
       ),
     );
     const overlay = new OverlayService(new ContextKeys());

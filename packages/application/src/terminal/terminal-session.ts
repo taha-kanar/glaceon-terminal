@@ -41,6 +41,17 @@ export class TerminalSession {
     return this.#closed ? Promise.resolve(undefined) : this.#resources.pty.cwd(this.id);
   }
 
+  /**
+   * Stops driving the view without killing the shell, which waits in the pty host for
+   * another window. Resolves once all earlier output has reached the view.
+   */
+  async detach(): Promise<void> {
+    if (this.#closed) return;
+    this.#closed = true;
+    await this.#resources.pty.detach(this.id);
+    this.#resources.wiring.dispose();
+  }
+
   /** Detaches from the shell and kills it. No exit event is delivered afterwards. */
   close(): void {
     if (this.#closed) return;

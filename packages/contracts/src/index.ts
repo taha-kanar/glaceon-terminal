@@ -8,7 +8,14 @@ export {
   type SettingsSnapshot,
   type SettingsUpdateRequest,
   type SettingsUpdateResult,
+  type PaneTransferWire,
+  type TabImportRequest,
+  type TabImportResult,
+  type TabPayloadWire,
+  type TabTransferRequest,
+  type TransferTargetWire,
   type Unsubscribe,
+  type WindowSummaryWire,
 } from './bridge';
 export {
   MainInvokeChannel,
@@ -32,4 +39,5 @@ export {
   decodeLinkOpenRequest,
   decodeRunCommandRequest,
   decodeSettingsUpdateRequest,
+  decodeTabImportResult,
 } from './request-decoders';

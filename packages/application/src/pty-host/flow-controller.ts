@@ -43,6 +43,15 @@ export class FlowController {
     }
   }
 
+  /** Forgets the backlog, e.g. when a session moves to a client that never saw it. */
+  reset(): void {
+    this.#unacknowledged = 0;
+    if (this.#paused) {
+      this.#paused = false;
+      this.#target.resume();
+    }
+  }
+
   acknowledged(bytes: number): void {
     this.#unacknowledged = Math.max(0, this.#unacknowledged - bytes);
     if (this.#paused && this.#unacknowledged < this.#watermarks.low) {

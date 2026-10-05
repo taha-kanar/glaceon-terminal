@@ -7,6 +7,7 @@ import type {
   Toast,
   ReadableStore,
   RenameTarget,
+  WindowSummary,
   SessionInfoMap,
 } from '@glaceon/application';
 import type { PaneId, Settings, SplitPath, TabId, Workspace } from '@glaceon/domain';
@@ -42,6 +43,7 @@ export interface AppModel {
   readonly actions: AppActions;
   readonly arrange: ArrangeActions;
   readonly renaming: ReadableStore<RenameTarget | undefined>;
+  readonly windows: ReadableStore<readonly WindowSummary[]>;
   readonly bindSlot: TerminalSlotBinder;
   readonly overlay: ReadableStore<OverlayState | undefined>;
   readonly closeOverlay: () => void;

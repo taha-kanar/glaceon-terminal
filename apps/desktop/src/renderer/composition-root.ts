@@ -20,6 +20,9 @@ import {
   OverlayService,
   PaletteService,
   SessionManager,
+  TabTransferService,
+  TransferCommands,
+  type WindowSummary,
   TerminalSessionService,
   ThemeCommands,
   ThemeEditor,
@@ -36,7 +39,12 @@ import {
 } from '@glaceon/infrastructure/renderer';
 import { App, type AppActions, type AppModel, type TerminalSlotBinder } from '@glaceon/ui';
 import { createElement, type ReactElement } from 'react';
-import { linkOpenerFor, settingsWriterFor, windowPortFor } from './bridge-adapters';
+import {
+  linkOpenerFor,
+  settingsWriterFor,
+  tabTransferPortFor,
+  windowPortFor,
+} from './bridge-adapters';
 import {
   arrangeActionsFor,
   jobsModelFor,
@@ -98,6 +106,10 @@ export async function createRendererCompositionRoot(
     notify,
   });
   const arrangement = new ArrangementService({ store: workspaceStore, ids, sessions, notify });
+  const windows = new ObservableStore<readonly WindowSummary[]>([]);
+  bridge.onWindowsChanged((list) => {
+    windows.set(list);
+  });
 
   // ---- views: measure with the bundled font before the first terminal exists
   await target.document.fonts.load(`${String(settings.get().fontSize)}px "JetBrains Mono"`);
@@ -126,6 +138,18 @@ export async function createRendererCompositionRoot(
   registry.registerContribution(new OverlayCommands(overlay));
   registry.registerContribution(new JobCommands(overlay));
   registry.registerContribution(themeCommands);
+  const transfers = new TabTransferService({
+    store: workspaceStore,
+    workspace,
+    sessions,
+    views,
+    port: tabTransferPortFor(bridge),
+    ids,
+    notify,
+  });
+  bridge.onImportTab((payload) => transfers.importTab(payload));
+  const transferCommands = new TransferCommands(transfers, windows);
+  registry.registerContribution(transferCommands);
   const arrangementCommands = new ArrangementCommands(arrangement);
   registry.registerContribution(arrangementCommands);
   registry.onDidFail(({ commandId, error }) => {
@@ -141,7 +165,7 @@ export async function createRendererCompositionRoot(
   });
   const palette = new PaletteService({
     registry,
-    providers: [themeCommands, arrangementCommands],
+    providers: [themeCommands, arrangementCommands, transferCommands],
     keybindings: keybindings.resolver,
     overlay,
   });
@@ -217,7 +241,8 @@ export async function createRendererCompositionRoot(
     confirmation: confirmation.current,
     labelFor: (command) => keybindings.resolver.get().labelFor(command),
     actions,
-    arrange: arrangeActionsFor(arrangement, refocus),
+    arrange: arrangeActionsFor({ arrangement, transfers }, refocus),
+    windows,
     renaming: arrangement.renaming,
     bindSlot,
     overlay: overlay.state,
@@ -237,7 +262,8 @@ export async function createRendererCompositionRoot(
     toasts: { items: toasts.toasts, dismiss: (id) => toasts.dismiss(id) },
   };
 
-  workspace.ensureTab();
+  // A window opened for a torn-off tab gets that tab instead of a fresh one.
+  if ((await bridge.windowReady()) === 0) workspace.ensureTab();
 
   if (bridge.e2e) {
     target.__glaceonE2E = createE2EProbe({

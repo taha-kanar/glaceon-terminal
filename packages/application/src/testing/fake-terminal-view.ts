@@ -26,6 +26,14 @@ export class FakeTerminalView implements TerminalView {
     else this.pendingWrites.push(written);
   }
 
+  restore(snapshot: string): void {
+    this.written.push(new TextEncoder().encode(snapshot));
+  }
+
+  flush(): Promise<void> {
+    return Promise.resolve();
+  }
+
   clear(): void {
     this.cleared++;
   }

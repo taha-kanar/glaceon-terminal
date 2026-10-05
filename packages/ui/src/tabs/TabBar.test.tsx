@@ -32,6 +32,10 @@ describe('TabBar', () => {
         actions={fakeActions()}
         arrange={fakeArrange()}
         renaming={undefined}
+        windows={[
+          { id: 1, title: 'Window 1', current: true },
+          { id: 2, title: 'Window 2', current: false },
+        ]}
         newTabLabel="⌘T"
       />,
     );
@@ -53,6 +57,10 @@ describe('TabBar', () => {
         actions={actions}
         arrange={fakeArrange()}
         renaming={undefined}
+        windows={[
+          { id: 1, title: 'Window 1', current: true },
+          { id: 2, title: 'Window 2', current: false },
+        ]}
         newTabLabel={undefined}
       />,
     );

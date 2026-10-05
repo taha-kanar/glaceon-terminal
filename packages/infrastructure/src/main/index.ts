@@ -10,3 +10,5 @@ export { SystemLinkOpener } from './system-link-opener';
 export { PtyHostSupervisor, type PtyHostSupervisorOptions } from './pty-host-supervisor';
 export { TerminalWindow, type RendererSource, type TerminalWindowOptions } from './terminal-window';
 export { hardenWebContents } from './web-contents-hardening';
+export { TabTransferCoordinator, type TransferWindow } from './tab-transfer-coordinator';
+export { decodeTabTransferRequest } from './tab-transfer-schema';

@@ -4,6 +4,10 @@ export const MainInvokeChannel = {
   settingsGet: 'settings:get',
   settingsUpdate: 'settings:update',
   linkOpen: 'link:open',
+  /** Move a tab to another (or a new) window; resolves once the target adopted it. */
+  tabTransfer: 'tab:transfer',
+  /** The renderer is wired up; replies how many tabs are waiting to be imported. */
+  windowReady: 'window:ready',
 } as const;
 
 /** send() channels handled by the main process (renderer → main, fire and forget). */
@@ -11,6 +15,7 @@ export const MainSendChannel = {
   windowNew: 'window:new',
   windowClose: 'window:close',
   settingsOpenFile: 'settings:open-file',
+  tabImportResult: 'tab:import-result',
 } as const;
 
 /** Channels main pushes to renderers. */
@@ -20,6 +25,9 @@ export const RendererChannel = {
   runCommand: 'command:run',
   /** The user clicked the window's close button; the renderer decides (it may confirm first). */
   closeRequested: 'window:close-requested',
+  /** A tab moved here from another window. */
+  tabImport: 'tab:import',
+  windowsChanged: 'windows:changed',
 } as const;
 
 /** Channel on which main delivers a window's pty MessagePort to its preload. */

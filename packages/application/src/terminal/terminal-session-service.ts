@@ -6,10 +6,11 @@ import {
   ok,
   type PtyExit,
   type Result,
+  type SessionId,
 } from '@glaceon/domain';
 import type { IdGenerator } from '../ports/id-generator';
 import type { ForegroundProcess, PtyError, PtyPort } from './pty-port';
-import { TerminalSession } from './terminal-session';
+import { TerminalSession, type TerminalSessionResources } from './terminal-session';
 import type { TerminalView } from './terminal-view';
 
 export interface TerminalSessionServiceDeps {
@@ -38,11 +39,52 @@ export class TerminalSessionService {
   ): Promise<Result<TerminalSession, PtyError>> {
     const { pty, ids } = this.#deps;
     const sessionId = asSessionId(ids.next());
+    // Listen before spawning so the first bytes of output are never missed.
+    const resources = this.#listen(sessionId, view);
+    const spawned = await pty.spawn({
+      sessionId,
+      size: normalizeTerminalSize(view.fit()),
+      ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+    });
+    if (!spawned.ok) {
+      resources.wiring.dispose();
+      return spawned;
+    }
+    this.#connectInput(sessionId, view, resources.wiring);
+    return ok(new TerminalSession(sessionId, spawned.value, resources));
+  }
+
+  /**
+   * Connects a view to a shell another window detached. The view should already show the
+   * snapshot of the old one; buffered output follows it.
+   */
+  async attach(
+    view: TerminalView,
+    transfer: { readonly sessionId: SessionId; readonly shell: string },
+  ): Promise<Result<TerminalSession, PtyError>> {
+    const { pty } = this.#deps;
+    const { sessionId } = transfer;
+    const resources = this.#listen(sessionId, view);
+    const attached = await pty.attach(sessionId);
+    if (!attached.ok) {
+      resources.wiring.dispose();
+      return attached;
+    }
+    this.#connectInput(sessionId, view, resources.wiring);
+    pty.resize(sessionId, normalizeTerminalSize(view.fit()));
+    return ok(
+      new TerminalSession(sessionId, { pid: attached.value.pid, shell: transfer.shell }, resources),
+    );
+  }
+
+  #listen(
+    sessionId: SessionId,
+    view: TerminalView,
+  ): TerminalSessionResources & { readonly wiring: DisposableStore } {
+    const { pty } = this.#deps;
     const wiring = new DisposableStore();
     const exited = new Emitter<PtyExit>();
     const process = new Emitter<ForegroundProcess>();
-
-    // Listen before spawning so the first bytes of output are never missed.
     wiring.add(
       pty.onData(sessionId, (chunk) => {
         view.write(chunk, () => pty.acknowledge(sessionId, chunk.byteLength));
@@ -55,21 +97,13 @@ export class TerminalSessionService {
         exited.emit(exit);
       }),
     );
+    wiring.add({ dispose: () => process.clear() });
+    return { pty, wiring, exited, process };
+  }
 
-    const spawned = await pty.spawn({
-      sessionId,
-      size: normalizeTerminalSize(view.fit()),
-      ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
-    });
-    if (!spawned.ok) {
-      wiring.dispose();
-      return spawned;
-    }
-
+  #connectInput(sessionId: SessionId, view: TerminalView, wiring: DisposableStore): void {
+    const { pty } = this.#deps;
     wiring.add(view.onInput((data) => pty.write(sessionId, data)));
     wiring.add(view.onResize((size) => pty.resize(sessionId, normalizeTerminalSize(size))));
-    wiring.add({ dispose: () => process.clear() });
-
-    return ok(new TerminalSession(sessionId, spawned.value, { pty, wiring, exited, process }));
   }
 }

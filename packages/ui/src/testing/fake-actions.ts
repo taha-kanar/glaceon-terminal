@@ -35,5 +35,7 @@ export function fakeArrange(): FakeArrange {
     setGroupColor: vi.fn(),
     ungroup: vi.fn(),
     movePane: vi.fn(),
+    moveToWindow: vi.fn(),
+    tearOff: vi.fn(),
   };
 }

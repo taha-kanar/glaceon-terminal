@@ -9,10 +9,33 @@ import {
 
 /** Pointer travel before a press on a tab becomes a drag. */
 const DRAG_THRESHOLD = 5;
+/** How far below the tab bar a tab must be dragged to tear it off. */
+const TEAR_OFF_DISTANCE = 60;
+
+export interface TabDropHandlers {
+  readonly move: (tab: TabId, index: number) => void;
+  readonly tearOff: (tab: TabId, screen: { readonly x: number; readonly y: number }) => void;
+}
+
+/** Released outside the window, or well below the tab bar. */
+function isTearOff(list: HTMLElement, event: PointerEvent): boolean {
+  const view = list.ownerDocument.defaultView;
+  const outside =
+    view !== null &&
+    (event.clientX < 0 ||
+      event.clientY < 0 ||
+      event.clientX > view.innerWidth ||
+      event.clientY > view.innerHeight);
+  return outside || event.clientY > list.getBoundingClientRect().bottom + TEAR_OFF_DISTANCE;
+}
 
 export interface TabDrag {
-  /** The tab being dragged and where the insertion marker is (px from the list's left edge). */
-  readonly state: { readonly tab: TabId; readonly marker: number } | undefined;
+  /**
+   * The tab being dragged, where the insertion marker is (px from the list's left edge), and
+   * whether letting go now tears the tab off into another window.
+   */
+  readonly state:
+    { readonly tab: TabId; readonly marker: number; readonly tearing: boolean } | undefined;
   readonly onPointerDown: (tab: TabId, event: ReactPointerEvent) => void;
 }
 
@@ -52,7 +75,7 @@ function dropAt(
 export function useTabDrag(
   list: RefObject<HTMLElement | null>,
   workspace: Workspace,
-  onDrop: (tab: TabId, index: number) => void,
+  onDrop: TabDropHandlers,
 ): TabDrag {
   const [state, setState] = useState<TabDrag['state']>(undefined);
   const latest = useRef({ workspace, onDrop });
@@ -63,19 +86,25 @@ export function useTabDrag(
   const onPointerDown = (tab: TabId, event: ReactPointerEvent): void => {
     if (event.button !== 0) return;
     const startX = event.clientX;
+    const startY = event.clientY;
     let drop: Drop | undefined;
     const onMove = (move: PointerEvent): void => {
       const element = list.current;
       if (element === null) return;
-      if (drop === undefined && Math.abs(move.clientX - startX) < DRAG_THRESHOLD) return;
+      const travelled = Math.max(Math.abs(move.clientX - startX), Math.abs(move.clientY - startY));
+      if (drop === undefined && travelled < DRAG_THRESHOLD) return;
       drop = dropAt(element, latest.current.workspace, { dragged: tab, x: move.clientX });
-      setState({ tab, marker: drop.marker });
+      setState({ tab, marker: drop.marker, tearing: isTearOff(element, move) });
     };
-    const onUp = (): void => {
+    const onUp = (up: PointerEvent): void => {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       setState(undefined);
-      if (drop !== undefined) latest.current.onDrop(tab, drop.index);
+      const element = list.current;
+      if (drop === undefined || element === null) return;
+      if (isTearOff(element, up))
+        latest.current.onDrop.tearOff(tab, { x: up.screenX, y: up.screenY });
+      else latest.current.onDrop.move(tab, drop.index);
     };
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);

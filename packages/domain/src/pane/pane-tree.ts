@@ -72,6 +72,14 @@ function mapLeaves(tree: PaneNode, replace: (leaf: PaneLeaf) => PaneNode | undef
   return first === tree.first && second === tree.second ? tree : { ...tree, first, second };
 }
 
+/** Gives leaves new ids (e.g. when a tab arrives in a window that already uses some of them). */
+export function renameLeaves(tree: PaneNode, rename: (id: PaneId) => PaneId): PaneNode {
+  return mapLeaves(tree, (leaf) => {
+    const id = rename(leaf.id);
+    return id === leaf.id ? undefined : paneLeaf(id);
+  });
+}
+
 export interface SplitLeafOptions {
   readonly newId: PaneId;
   readonly axis: SplitAxis;

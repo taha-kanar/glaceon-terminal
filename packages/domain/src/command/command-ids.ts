@@ -13,6 +13,8 @@ export const CommandIds = {
   tabRemoveFromGroup: 'tab.removeFromGroup',
   paneMoveToNewTab: 'pane.moveToNewTab',
   layoutApply: 'layout.apply',
+  tabMoveToNewWindow: 'tab.moveToNewWindow',
+  tabMoveToWindow: 'tab.moveToWindow',
   windowNew: 'window.new',
   windowClose: 'window.close',
   paneSplitRight: 'pane.splitRight',

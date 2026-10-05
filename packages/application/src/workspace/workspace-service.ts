@@ -119,6 +119,11 @@ export class WorkspaceService {
     this.#update((ws) => closeTab(ws, tab.id));
   }
 
+  /** Removes a tab whose shells now live elsewhere (another window adopted them). */
+  forgetTab(id: TabId): void {
+    this.#update((ws) => closeTab(ws, id));
+  }
+
   /** Asks before closing the window when any shell in it is running something. */
   async confirmWindowClose(): Promise<boolean> {
     return this.#confirmClose(allPaneIds(this.#workspace), 'Close window?');

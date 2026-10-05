@@ -1,4 +1,4 @@
-import type { RenameTarget } from '@glaceon/application';
+import type { RenameTarget, WindowSummary } from '@glaceon/application';
 import type { DropZone, PaneId, TabColor, TabGroupId, TabId } from '@glaceon/domain';
 
 /** Tab metadata, groups and pane drag-and-drop intents. */
@@ -16,4 +16,10 @@ export interface ArrangeActions {
   readonly setGroupColor: (group: TabGroupId, color: TabColor) => void;
   readonly ungroup: (group: TabGroupId) => void;
   readonly movePane: (source: PaneId, target: PaneId, zone: DropZone) => void;
+  /** To another window, or to a new one when `window` is undefined. */
+  readonly moveToWindow: (tab: TabId, window: number | undefined) => void;
+  /** Dropped outside the tab bar: into the window under the screen point, or a new one there. */
+  readonly tearOff: (tab: TabId, screen: { readonly x: number; readonly y: number }) => void;
 }
+
+export type { WindowSummary };

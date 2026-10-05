@@ -34,6 +34,13 @@ export interface PtyPort {
   cwd(sessionId: SessionId): Promise<string | undefined>;
   onData(sessionId: SessionId, listener: (chunk: Uint8Array) => void): Disposable;
   onExit(sessionId: SessionId, listener: (exit: PtyExit) => void): Disposable;
+  /**
+   * Hands the session to the pty host's waiting room so another window can attach it.
+   * Resolves once all output sent before the detach has been delivered to `onData`.
+   */
+  detach(sessionId: SessionId): Promise<void>;
+  /** Takes over a detached session; its buffered output is delivered first. */
+  attach(sessionId: SessionId): Promise<Result<{ readonly pid: number }, PtyError>>;
   /** Fires when the foreground process of the session changes (e.g. `zsh` → `vim`). */
   onProcess(sessionId: SessionId, listener: (process: ForegroundProcess) => void): Disposable;
 }

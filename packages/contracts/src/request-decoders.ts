@@ -1,5 +1,10 @@
 import { isFiniteNumber, isNonEmptyString, isOptional, isRecord } from './guards';
-import type { LinkOpenRequest, RunCommandRequest, SettingsUpdateRequest } from './bridge';
+import type {
+  LinkOpenRequest,
+  RunCommandRequest,
+  SettingsUpdateRequest,
+  TabImportResult,
+} from './bridge';
 
 export function decodeRunCommandRequest(value: unknown): RunCommandRequest | undefined {
   if (!isRecord(value) || !isNonEmptyString(value['command'])) return undefined;
@@ -38,4 +43,11 @@ export function decodeLinkOpenRequest(value: unknown): LinkOpenRequest | undefin
     ...(line === undefined ? {} : { line }),
     ...(column === undefined ? {} : { column }),
   };
+}
+
+export function decodeTabImportResult(value: unknown): TabImportResult | undefined {
+  if (!isRecord(value) || !isFiniteNumber(value['transferId'])) return undefined;
+  return typeof value['ok'] === 'boolean'
+    ? { transferId: value['transferId'], ok: value['ok'] }
+    : undefined;
 }

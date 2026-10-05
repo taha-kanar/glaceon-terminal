@@ -47,6 +47,10 @@ class PortSessionOutput implements SessionOutput {
     }));
     this.#port.postMessage({ t: 'processes', sessions } satisfies PtyHostMessage);
   }
+
+  detached(sessionId: SessionId): void {
+    this.#port.postMessage({ t: 'detached', sid: sessionId } satisfies PtyHostMessage);
+  }
 }
 
 function dispatch(
@@ -85,6 +89,22 @@ function dispatch(
     case 'kill':
       connection.kill(sessionId);
       return;
+    case 'detach':
+      connection.detach(sessionId);
+      return;
+    case 'attach': {
+      const result = connection.attach(sessionId);
+      port.postMessage(
+        (result.ok
+          ? { t: 'attached', reqId: message.reqId, pid: result.value.pid }
+          : {
+              t: 'attached',
+              reqId: message.reqId,
+              message: result.error.message,
+            }) satisfies PtyHostMessage,
+      );
+      return;
+    }
     case 'ack':
       connection.acknowledge(sessionId, message.bytes);
       return;

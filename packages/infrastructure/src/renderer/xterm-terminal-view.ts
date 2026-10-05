@@ -14,6 +14,7 @@ import {
 } from '@glaceon/domain';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
+import { SerializeAddon } from '@xterm/addon-serialize';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal, type ITheme } from '@xterm/xterm';
@@ -43,6 +44,7 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
   readonly #terminal: Terminal;
   readonly #fitAddon = new FitAddon();
   readonly #searchAddon = new SearchAddon();
+  readonly #serializeAddon = new SerializeAddon();
   #searchColors: XtermViewOptions['searchColors'];
   #lastSearchKey = '';
   readonly #resizeObserver: ResizeObserver;
@@ -65,6 +67,7 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
     });
     this.#terminal.loadAddon(this.#fitAddon);
     this.#terminal.loadAddon(this.#searchAddon);
+    this.#terminal.loadAddon(this.#serializeAddon);
     const links = this.#terminal.registerLinkProvider(
       new TerminalLinkProvider(this.#terminal, onLink),
     );
@@ -85,6 +88,21 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
 
   write(chunk: Uint8Array, written?: () => void): void {
     this.#terminal.write(chunk, written);
+  }
+
+  restore(snapshot: string): void {
+    this.#terminal.write(snapshot);
+  }
+
+  flush(): Promise<void> {
+    return new Promise((resolve) => {
+      this.#terminal.write('', resolve);
+    });
+  }
+
+  /** Screen and scrollback as escape sequences that redraw them in another terminal. */
+  serialize(): string {
+    return this.#serializeAddon.serialize();
   }
 
   fit(): TerminalSize {

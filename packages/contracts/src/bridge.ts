@@ -1,4 +1,4 @@
-import type { Settings } from '@glaceon/domain';
+import type { PaneId, PaneNode, SessionId, Settings, TabColor } from '@glaceon/domain';
 
 /** Name of the API object the preload exposes on `window`. */
 export const BRIDGE_KEY = 'glaceon';
@@ -37,6 +37,52 @@ export type LinkOpenRequest =
 
 export type OperationResult = SettingsUpdateResult;
 
+/** A running shell moving between windows (see the pty `detach`/`attach` messages). */
+export interface PaneTransferWire {
+  readonly sessionId: SessionId;
+  readonly pid: number;
+  readonly shell: string;
+  readonly process?: string;
+  readonly busy?: boolean;
+  readonly snapshot?: string;
+}
+
+export interface TabPayloadWire {
+  readonly title?: string;
+  readonly color?: TabColor;
+  readonly locked: boolean;
+  readonly root: PaneNode;
+  readonly activePane: PaneId;
+  readonly zoomed: boolean;
+  readonly panes: readonly { readonly pane: PaneId; readonly transfer?: PaneTransferWire }[];
+}
+
+export type TransferTargetWire =
+  | { readonly kind: 'window'; readonly windowId: number }
+  | { readonly kind: 'newWindow' }
+  | { readonly kind: 'point'; readonly x: number; readonly y: number };
+
+export interface TabTransferRequest {
+  readonly payload: TabPayloadWire;
+  readonly target: TransferTargetWire;
+}
+
+export interface TabImportRequest {
+  readonly transferId: number;
+  readonly payload: TabPayloadWire;
+}
+
+export interface TabImportResult {
+  readonly transferId: number;
+  readonly ok: boolean;
+}
+
+export interface WindowSummaryWire {
+  readonly id: number;
+  readonly title: string;
+  readonly current: boolean;
+}
+
 export type Unsubscribe = () => void;
 
 /** The only surface a renderer has into the privileged world. */
@@ -51,6 +97,13 @@ export interface GlaceonBridge {
   onSettingsChanged(listener: (snapshot: SettingsSnapshot) => void): Unsubscribe;
   onRunCommand(listener: (request: RunCommandRequest) => void): Unsubscribe;
   onCloseRequested(listener: () => void): Unsubscribe;
+  /** Resolves true once the target window adopted the tab's shells. */
+  transferTab(request: TabTransferRequest): Promise<boolean>;
+  /** Handles tabs moved here; the listener resolves true once it adopted the shells. */
+  onImportTab(listener: (payload: TabPayloadWire) => Promise<boolean>): Unsubscribe;
+  /** Tells main the window is wired up; returns how many imported tabs are on their way. */
+  windowReady(): Promise<number>;
+  onWindowsChanged(listener: (windows: readonly WindowSummaryWire[]) => void): Unsubscribe;
   newWindow(): void;
   /** Closes this window without asking again (the renderer already confirmed). */
   closeWindow(): void;

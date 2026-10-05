@@ -48,10 +48,14 @@ export * from './workspace/arrangement-commands';
 export type * from './jobs/process-monitor-port';
 export * from './jobs/job-service';
 export * from './jobs/job-commands';
+export type * from './transfer/tab-transfer-port';
+export * from './transfer/tab-transfer-service';
+export * from './transfer/transfer-commands';
 
 export { HostConnection, type HostServices } from './pty-host/host-connection';
 export type { ProcessInspector } from './pty-host/process-inspector';
 export * from './pty-host/process-monitor';
+export { DetachBuffer } from './pty-host/detach-buffer';
 export * from './pty-host/flow-controller';
 export * from './pty-host/output-batcher';
 export type { PtyProcess, PtyProcessFactory, PtySpawnOptions } from './pty-host/pty-process';

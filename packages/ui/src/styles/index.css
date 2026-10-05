@@ -1321,3 +1321,8 @@ body.dragging-column * {
   border-color: var(--danger);
   color: var(--danger);
 }
+
+.tabs--tearing .tab--dragging {
+  opacity: 0.25;
+  outline: 1px dashed var(--accent);
+}

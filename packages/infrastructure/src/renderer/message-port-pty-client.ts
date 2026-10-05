@@ -28,6 +28,7 @@ import {
 
 type SpawnReply = (result: Result<SpawnedSession, PtyError>) => void;
 type CwdReply = (cwd: string | undefined) => void;
+type AttachReply = (result: Result<{ readonly pid: number }, PtyError>) => void;
 
 /** The host is told about rendered bytes in steps of this size to keep ack traffic low. */
 export const ACK_STEP_BYTES = 5_000;
@@ -37,6 +38,8 @@ export class MessagePortPtyClient implements PtyPort, ProcessMonitorPort {
   readonly #port: MessagePort;
   readonly #pendingSpawns = new Map<number, SpawnReply>();
   readonly #pendingCwds = new Map<number, CwdReply>();
+  readonly #pendingAttaches = new Map<number, AttachReply>();
+  readonly #pendingDetaches = new Map<string, () => void>();
   readonly #unacknowledged = new Map<string, number>();
   readonly #data = new KeyedEmitter<string, Uint8Array>();
   readonly #exit = new KeyedEmitter<string, PtyExit>();
@@ -109,6 +112,21 @@ export class MessagePortPtyClient implements PtyPort, ProcessMonitorPort {
     return this.#process.on(sessionId, listener);
   }
 
+  detach(sessionId: SessionId): Promise<void> {
+    return new Promise((resolve) => {
+      this.#pendingDetaches.set(sessionId, resolve);
+      this.#send({ t: 'detach', sid: sessionId });
+    });
+  }
+
+  attach(sessionId: SessionId): Promise<Result<{ readonly pid: number }, PtyError>> {
+    const reqId = this.#nextRequestId++;
+    return new Promise((resolve) => {
+      this.#pendingAttaches.set(reqId, resolve);
+      this.#send({ t: 'attach', reqId, sid: sessionId });
+    });
+  }
+
   watchProcesses(listener: (shells: readonly ShellProcesses[]) => void): Disposable {
     const subscription = this.#processTrees.on(listener);
     if (this.#processTrees.size === 1) this.#send({ t: 'monitor', on: true });
@@ -149,6 +167,24 @@ export class MessagePortPtyClient implements PtyPort, ProcessMonitorPort {
       case 'spawnFailed':
         this.#settleSpawn(message.reqId, err({ message: message.message }));
         return;
+      case 'detached': {
+        // Everything sent before this message has been emitted to `onData` listeners.
+        const resolve = this.#pendingDetaches.get(message.sid);
+        this.#pendingDetaches.delete(message.sid);
+        this.#forget(message.sid);
+        resolve?.();
+        return;
+      }
+      case 'attached': {
+        const reply = this.#pendingAttaches.get(message.reqId);
+        this.#pendingAttaches.delete(message.reqId);
+        reply?.(
+          message.pid === undefined
+            ? err({ message: message.message ?? 'Cannot attach the session' })
+            : ok({ pid: message.pid }),
+        );
+        return;
+      }
       case 'processes':
         this.#processTrees.emit(
           message.sessions.map(({ pid, processes }) => ({ shellPid: pid, processes })),

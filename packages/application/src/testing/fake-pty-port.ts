@@ -1,4 +1,5 @@
 import {
+  err,
   KeyedEmitter,
   ok,
   type Disposable,
@@ -21,6 +22,10 @@ export class FakePtyPort implements PtyPort {
   readonly resizes: { sessionId: SessionId; size: TerminalSize }[] = [];
   readonly killed: SessionId[] = [];
   readonly acknowledged: { sessionId: SessionId; bytes: number }[] = [];
+  readonly detachedSessions: SessionId[] = [];
+  readonly attachedSessions: SessionId[] = [];
+  /** Sessions `attach` accepts (with their pid). */
+  readonly attachable = new Map<SessionId, number>();
   cwdResult: string | undefined = '/work';
   nextSpawnResult: Result<SpawnedSession, PtyError> = ok({ pid: 4242, shell: 'zsh' });
 
@@ -51,6 +56,20 @@ export class FakePtyPort implements PtyPort {
 
   cwd(): Promise<string | undefined> {
     return Promise.resolve(this.cwdResult);
+  }
+
+  detach(sessionId: SessionId): Promise<void> {
+    this.detachedSessions.push(sessionId);
+    this.attachable.set(sessionId, this.attachable.get(sessionId) ?? 4242);
+    return Promise.resolve();
+  }
+
+  attach(sessionId: SessionId): Promise<Result<{ readonly pid: number }, PtyError>> {
+    const pid = this.attachable.get(sessionId);
+    if (pid === undefined) return Promise.resolve(err({ message: 'not detached' }));
+    this.attachable.delete(sessionId);
+    this.attachedSessions.push(sessionId);
+    return Promise.resolve(ok({ pid }));
   }
 
   onProcess(sessionId: SessionId, listener: (process: ForegroundProcess) => void): Disposable {

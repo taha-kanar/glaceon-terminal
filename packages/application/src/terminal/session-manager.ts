@@ -4,6 +4,7 @@ import {
   type Disposable,
   type PaneId,
   type PtyExit,
+  type SessionId,
 } from '@glaceon/domain';
 import { ObservableStore, type ReadableStore } from '../store/store';
 import type { OpenSessionOptions, TerminalSessionService } from './terminal-session-service';
@@ -24,6 +25,17 @@ export interface SessionInfo {
 
 export type SessionInfoMap = ReadonlyMap<PaneId, SessionInfo>;
 
+/** A running shell travelling from one window to another, with its last screen. */
+export interface PaneTransfer {
+  readonly sessionId: SessionId;
+  readonly pid: number;
+  readonly shell: string;
+  readonly process?: string;
+  readonly busy?: boolean;
+  /** Serialized screen and scrollback (escape sequences) of the old view. */
+  readonly snapshot?: string;
+}
+
 export interface PaneExit {
   readonly pane: PaneId;
   readonly exit: PtyExit;
@@ -32,7 +44,7 @@ export interface PaneExit {
 interface PaneEntry {
   readonly view: TerminalView;
   readonly wiring: DisposableStore;
-  session?: TerminalSession;
+  session?: TerminalSession | undefined;
 }
 
 /** The shell of every pane in a window: start, restart, focus and teardown. */
@@ -42,6 +54,10 @@ export class SessionManager {
   readonly #prepared = new Map<PaneId, OpenSessionOptions>();
   readonly #info = new ObservableStore<SessionInfoMap>(new Map());
   readonly #exited = new Emitter<PaneExit>();
+  readonly #incoming = new Map<
+    PaneId,
+    { readonly transfer: PaneTransfer; readonly done: (ok: boolean) => void }
+  >();
   #focusRequest: PaneId | undefined;
 
   constructor(sessions: TerminalSessionService) {
@@ -65,11 +81,57 @@ export class SessionManager {
     return this.#panes.has(pane);
   }
 
-  /** Binds a freshly created view to `pane` and starts its shell. */
+  /** Binds a freshly created view to `pane` and starts its shell (or adopts an incoming one). */
   async open(pane: PaneId, view: TerminalView): Promise<void> {
     if (this.#panes.has(pane)) return;
     this.#panes.set(pane, { view, wiring: new DisposableStore() });
-    await this.#start(pane);
+    const incoming = this.#incoming.get(pane);
+    if (incoming === undefined) {
+      await this.#start(pane);
+      return;
+    }
+    this.#incoming.delete(pane);
+    if (incoming.transfer.snapshot !== undefined) {
+      view.restore(incoming.transfer.snapshot);
+    }
+    incoming.done(await this.#adopt(pane, incoming.transfer));
+  }
+
+  /**
+   * Announces that `pane` will get a shell from another window instead of a new one. Resolves
+   * once the pane's view exists and the shell is attached (false if attaching failed).
+   */
+  expect(pane: PaneId, transfer: PaneTransfer): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.#incoming.set(pane, { transfer, done: resolve });
+    });
+  }
+
+  /**
+   * Lets go of the pane's shell without killing it, for another window to adopt. The pane
+   * keeps its view and info until it is released. Undefined when there is no live shell.
+   */
+  async detach(pane: PaneId): Promise<PaneTransfer | undefined> {
+    const entry = this.#panes.get(pane);
+    const session = entry?.session;
+    const info = this.#info.get().get(pane);
+    if (entry === undefined || session === undefined || info?.exit !== undefined) return undefined;
+    entry.session = undefined;
+    entry.wiring.dispose();
+    await session.detach();
+    await entry.view.flush();
+    return {
+      sessionId: session.id,
+      pid: session.pid,
+      shell: session.spawned.shell,
+      ...(info?.process === undefined ? {} : { process: info.process }),
+      ...(info?.busy === undefined ? {} : { busy: info.busy }),
+    };
+  }
+
+  /** Takes a detached shell back into its old pane (when moving it elsewhere failed). */
+  async reattach(pane: PaneId, transfer: PaneTransfer): Promise<boolean> {
+    return this.#panes.has(pane) ? this.#adopt(pane, transfer) : false;
   }
 
   /** Starts a new shell in a pane whose shell has exited. */
@@ -132,17 +194,44 @@ export class SessionManager {
       this.#setInfo(pane, { error: result.error.message, exit: { exitCode: -1 } });
       return;
     }
-    const session = result.value;
-    fresh.session = session;
+    this.#bindSession(pane, fresh, result.value);
+  }
+
+  async #adopt(pane: PaneId, transfer: PaneTransfer): Promise<boolean> {
+    const entry = this.#panes.get(pane);
+    if (entry === undefined) return false;
+    entry.wiring.dispose();
+    const wiring = new DisposableStore();
+    const fresh: PaneEntry = { view: entry.view, wiring };
+    this.#panes.set(pane, fresh);
+    const result = await this.#sessions.attach(entry.view, transfer);
+    if (this.#panes.get(pane) !== fresh) {
+      if (result.ok) result.value.close();
+      return false;
+    }
+    if (!result.ok) {
+      this.#setInfo(pane, { error: result.error.message, exit: { exitCode: -1 } });
+      return false;
+    }
+    this.#bindSession(pane, fresh, result.value);
+    this.#patchInfo(pane, {
+      ...(transfer.process === undefined ? {} : { process: transfer.process }),
+      ...(transfer.busy === undefined ? {} : { busy: transfer.busy }),
+    });
+    return true;
+  }
+
+  #bindSession(pane: PaneId, entry: PaneEntry, session: TerminalSession): void {
+    entry.session = session;
     this.#setInfo(pane, {
       pid: session.pid,
       shell: session.spawned.shell,
       process: session.spawned.shell,
     });
-    wiring.add(
+    entry.wiring.add(
       session.onProcess(({ name, busy }) => this.#patchInfo(pane, { process: name, busy })),
     );
-    wiring.add(session.onExit((exit) => this.#handleExit(pane, exit)));
+    entry.wiring.add(session.onExit((exit) => this.#handleExit(pane, exit)));
     if (this.#focusRequest === pane) this.focus(pane);
   }
 

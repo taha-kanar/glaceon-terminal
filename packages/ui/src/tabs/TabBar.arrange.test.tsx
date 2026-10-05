@@ -38,6 +38,10 @@ function renderBar(ws: Workspace, renaming?: { kind: 'tab'; id: ReturnType<typeo
       actions={actions}
       arrange={arrange}
       renaming={renaming}
+      windows={[
+        { id: 1, title: 'Window 1', current: true },
+        { id: 2, title: 'Window 2', current: false },
+      ]}
       newTabLabel={undefined}
     />,
   );
@@ -78,6 +82,8 @@ describe('tab bar arrangement', () => {
     });
     const items = [...container.querySelectorAll<HTMLButtonElement>('.menu__item')];
     expect(items.map((i) => i.textContent)).toContain('Remove from Group');
+    expect(items.map((i) => i.textContent)).toContain('Move to Window 2');
+    expect(items.map((i) => i.textContent)).not.toContain('Move to Window 1');
     click(items.find((i) => i.textContent === 'Pin Tab') ?? null);
     expect(arrange.togglePin).toHaveBeenCalledWith(t(3));
     expect(container.querySelector('[data-testid="context-menu"]')).toBeNull();

@@ -1,3 +1,4 @@
+import type { WindowSummary } from '@glaceon/application';
 import type { Tab, TabGroup, Workspace } from '@glaceon/domain';
 import type { MenuEntry } from '../menu/ContextMenu';
 import type { ArrangeActions } from './arrange-actions';
@@ -8,6 +9,7 @@ export function tabMenu(
     readonly workspace: Workspace;
     readonly arrange: ArrangeActions;
     readonly closeTab: () => void;
+    readonly windows: readonly WindowSummary[];
   },
 ): MenuEntry[] {
   const { workspace, arrange } = context;
@@ -51,6 +53,19 @@ export function tabMenu(
             onSelect: () => arrange.setGroup(tab.id, undefined),
           } satisfies MenuEntry,
         ]),
+    { kind: 'separator' },
+    {
+      kind: 'item',
+      label: 'Move to New Window',
+      onSelect: () => arrange.moveToWindow(tab.id, undefined),
+    },
+    ...context.windows
+      .filter((window) => !window.current)
+      .map((window): MenuEntry => ({
+        kind: 'item',
+        label: `Move to ${window.title}`,
+        onSelect: () => arrange.moveToWindow(tab.id, window.id),
+      })),
     { kind: 'separator' },
     {
       kind: 'item',

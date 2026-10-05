@@ -21,6 +21,7 @@ class RecordingOutput implements SessionOutput {
 
   data(sessionId: SessionId, chunk: Uint8Array): void {
     this.chunks.push({ sessionId, text: new TextDecoder().decode(chunk) });
+    this.log.push(`data:${new TextDecoder().decode(chunk)}`);
   }
 
   exit(sessionId: SessionId, exit: PtyExit): void {
@@ -35,6 +36,12 @@ class RecordingOutput implements SessionOutput {
 
   processes(reports: readonly SessionProcesses[]): void {
     this.reports.push(reports);
+  }
+
+  readonly log: string[] = [];
+
+  detached(sessionId: SessionId): void {
+    this.log.push(`detached:${sessionId}`);
   }
 }
 
@@ -349,5 +356,77 @@ describe('process monitoring', () => {
     connection.monitor(true);
     await clock.advance(1500);
     expect(output.reports).toEqual([]);
+  });
+});
+
+describe('moving sessions between connections', () => {
+  const encode = (text: string) => new TextEncoder().encode(text);
+
+  it('delivers earlier output, buffers while detached and replays to the new owner', () => {
+    const { host, processes, scheduler } = setup();
+    const a = new RecordingOutput();
+    const b = new RecordingOutput();
+    const source = host.openConnection(a);
+    const target = host.openConnection(b);
+    const sid = asSessionId('s');
+    source.spawn({ sessionId: sid, size });
+    const pty = processes.processes[0];
+
+    pty?.data.emit(encode('one'));
+    expect(source.detach(sid)).toBe(true);
+    expect(a.log).toEqual(['data:one', 'detached:s']);
+    pty?.data.emit(encode('two'));
+    scheduler.advance(10);
+    source.write(sid, 'ignored');
+    expect(pty?.writes).toEqual([]);
+
+    expect(target.attach(sid)).toEqual({ ok: true, value: { pid: 1000 } });
+    pty?.data.emit(encode('three'));
+    scheduler.advance(10);
+    expect(b.chunks.map((c) => c.text)).toEqual(['two', 'three']);
+    target.write(sid, 'ls');
+    expect(pty?.writes).toEqual(['ls']);
+    expect(a.chunks.map((c) => c.text)).toEqual(['one']);
+    expect(source.detach(sid)).toBe(false);
+  });
+
+  it('refuses unknown sessions and reports exits that happened while detached', () => {
+    const { host, processes } = setup();
+    const b = new RecordingOutput();
+    const source = host.openConnection(new RecordingOutput());
+    const target = host.openConnection(b);
+    expect(target.attach(asSessionId('nope')).ok).toBe(false);
+    source.spawn({ sessionId: asSessionId('s'), size });
+    source.detach(asSessionId('s'));
+    processes.processes[0]?.exit.emit({ exitCode: 4 });
+    target.attach(asSessionId('s'));
+    expect(b.exits).toEqual([{ sessionId: 's', exit: { exitCode: 4 } }]);
+    expect(host.sessionCount).toBe(0);
+  });
+
+  it('kills sessions nobody claims and survives the source closing', () => {
+    const { host, processes, scheduler } = setup();
+    const source = host.openConnection(new RecordingOutput());
+    source.spawn({ sessionId: asSessionId('s'), size });
+    source.spawn({ sessionId: asSessionId('t'), size });
+    source.detach(asSessionId('s'));
+    host.closeConnection(source);
+    expect(processes.processes.map((p) => p.killed)).toEqual([false, true]);
+    scheduler.advance(30_000);
+    expect(processes.processes[0]?.killed).toBe(true);
+  });
+
+  it('un-pauses a session whose old owner never acknowledged its output', () => {
+    const { host, processes, scheduler } = setup();
+    const source = host.openConnection(new RecordingOutput());
+    const target = host.openConnection(new RecordingOutput());
+    source.spawn({ sessionId: asSessionId('s'), size });
+    const pty = processes.processes[0];
+    pty?.data.emit(encode('0123456789ab'));
+    scheduler.advance(10);
+    expect(pty?.paused).toBe(true);
+    source.detach(asSessionId('s'));
+    target.attach(asSessionId('s'));
+    expect(pty?.paused).toBe(false);
   });
 });

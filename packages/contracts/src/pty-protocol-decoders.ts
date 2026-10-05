@@ -35,7 +35,9 @@ export function decodePtyClientMessage(value: unknown): PtyClientMessage | undef
     case 'ack':
       return isFiniteNumber(message.bytes) && message.bytes >= 0 ? message : undefined;
     case 'cwd':
+    case 'attach':
       return isFiniteNumber(message.reqId) ? message : undefined;
+    case 'detach':
     case 'kill':
       return message;
     case 'monitor':
@@ -84,6 +86,14 @@ export function decodePtyHostMessage(value: unknown): PtyHostMessage | undefined
       return isNonEmptyString(message.sid) &&
         typeof message.name === 'string' &&
         typeof message.busy === 'boolean'
+        ? message
+        : undefined;
+    case 'detached':
+      return isNonEmptyString(message.sid) ? message : undefined;
+    case 'attached':
+      return isFiniteNumber(message.reqId) &&
+        isOptional(message.pid, isFiniteNumber) &&
+        isOptional(message.message, (v): v is string => typeof v === 'string')
         ? message
         : undefined;
     case 'processes':

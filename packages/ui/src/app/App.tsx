@@ -27,6 +27,7 @@ export function App({ model }: AppProps): ReactElement {
   const search = useStore(model.search.state);
   const toasts = useStore(model.toasts.items);
   const renaming = useStore(model.renaming);
+  const windows = useStore(model.windows);
   const { actions } = model;
 
   return (
@@ -37,6 +38,7 @@ export function App({ model }: AppProps): ReactElement {
         actions={actions}
         arrange={model.arrange}
         renaming={renaming}
+        windows={windows}
         newTabLabel={model.labelFor(CommandIds.tabNew)}
         trailing={<ProcessIndicator workspace={workspace} sessions={sessions} model={model.jobs} />}
       />

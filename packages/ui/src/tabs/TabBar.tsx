@@ -1,4 +1,4 @@
-import type { RenameTarget, SessionInfoMap } from '@glaceon/application';
+import type { RenameTarget, SessionInfoMap, WindowSummary } from '@glaceon/application';
 import { CommandIds, leafIds, type Workspace } from '@glaceon/domain';
 import { useCallback, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import type { AppActions } from '../app/app-model';
@@ -17,6 +17,8 @@ export interface TabBarProps {
   readonly actions: AppActions;
   readonly arrange: ArrangeActions;
   readonly renaming: RenameTarget | undefined;
+  /** All windows, for “Move to Window”. */
+  readonly windows: readonly WindowSummary[];
   readonly newTabLabel: string | undefined;
   /** Shown at the right end of the title bar. */
   readonly trailing?: ReactNode;
@@ -35,11 +37,15 @@ export function TabBar(props: TabBarProps): ReactElement {
   const closeMenu = useCallback(() => {
     setMenu(undefined);
   }, []);
-  const drag = useTabDrag(list, workspace, arrange.moveTab);
+  const drag = useTabDrag(list, workspace, { move: arrange.moveTab, tearOff: arrange.tearOff });
 
   return (
     <header className="titlebar">
-      <div ref={list} className="tabs" role="tablist">
+      <div
+        ref={list}
+        className={drag.state?.tearing === true ? 'tabs tabs--tearing' : 'tabs'}
+        role="tablist"
+      >
         {tabBarEntries(workspace).map((entry) => {
           if (entry.kind === 'group') {
             const { group } = entry;
@@ -111,6 +117,7 @@ export function TabBar(props: TabBarProps): ReactElement {
                   entries: tabMenu(tab, {
                     workspace,
                     arrange,
+                    windows: props.windows,
                     closeTab: () => {
                       actions.closeTab(tab.id);
                     },
@@ -123,7 +130,7 @@ export function TabBar(props: TabBarProps): ReactElement {
             />
           );
         })}
-        {drag.state !== undefined && (
+        {drag.state !== undefined && !drag.state.tearing && (
           <div
             className="tabs__marker"
             style={{ left: drag.state.marker }}

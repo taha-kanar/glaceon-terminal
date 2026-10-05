@@ -8,6 +8,8 @@ export interface SessionOutput {
   process(sessionId: SessionId, process: ForegroundProcess): void;
   /** Process trees of the connection's sessions (only while the client monitors them). */
   processes(reports: readonly SessionProcesses[]): void;
+  /** The session was detached; all of its earlier output has been delivered. */
+  detached(sessionId: SessionId): void;
 }
 
 export interface SessionProcesses {

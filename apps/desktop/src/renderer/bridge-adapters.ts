@@ -1,4 +1,4 @@
-import type { LinkOpener, SettingsWriter, WindowPort } from '@glaceon/application';
+import type { LinkOpener, SettingsWriter, TabTransferPort, WindowPort } from '@glaceon/application';
 import type { GlaceonBridge } from '@glaceon/contracts';
 import { err, ok } from '@glaceon/domain';
 
@@ -29,4 +29,8 @@ export function linkOpenerFor(bridge: GlaceonBridge): LinkOpener {
     openUrl: (url) => call({ kind: 'url', url }),
     openFile: (request) => call({ kind: 'file', ...request }),
   };
+}
+
+export function tabTransferPortFor(bridge: GlaceonBridge): TabTransferPort {
+  return { send: (payload, target) => bridge.transferTab({ payload, target }) };
 }

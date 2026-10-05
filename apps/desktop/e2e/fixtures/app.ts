@@ -60,7 +60,7 @@ export interface GlaceonWindow {
   ready(): Promise<void>;
 }
 
-function wrap(page: Page): GlaceonWindow {
+export function wrap(page: Page): GlaceonWindow {
   const self: GlaceonWindow = {
     page,
     terminalText: (pane) => page.evaluate((id) => window.__glaceonE2E.terminalText(id), pane),
@@ -106,6 +106,8 @@ function launchOptions(home: string, configDir: string): Parameters<typeof elect
   const executablePath = process.env['GLACEON_E2E_EXECUTABLE'];
   const shared = {
     GLACEON_E2E: '1',
+    // Windows stay invisible so test runs do not pop up on the developer's screen.
+    GLACEON_E2E_HIDDEN: process.env['GLACEON_E2E_VISIBLE'] === '1' ? '0' : '1',
     GLACEON_CONFIG_DIR: configDir,
     HOME: home,
     SHELL: '/bin/sh',
@@ -160,6 +162,18 @@ export const test = base.extend<Fixtures>({
     await use(window);
   },
 });
+
+/** Runs `action` and returns the window it opens, once its shell is ready. */
+export async function newWindowFrom(
+  app: ElectronApplication,
+  action: () => Promise<void>,
+): Promise<GlaceonWindow> {
+  const [page] = await Promise.all([app.waitForEvent('window'), action()]);
+  await page.waitForFunction(() => '__glaceonE2E' in window);
+  const window = wrap(page);
+  await window.ready();
+  return window;
+}
 
 export const isPackagedRun = process.env['GLACEON_E2E_EXECUTABLE'] !== undefined;
 

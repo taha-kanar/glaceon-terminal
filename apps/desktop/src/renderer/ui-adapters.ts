@@ -6,6 +6,7 @@ import type {
   KeybindingService,
   SearchService,
   SettingsWriter,
+  TabTransferService,
   ThemeEditor,
   WorkspaceService,
 } from '@glaceon/application';
@@ -16,10 +17,20 @@ import type { AppModel, ArrangeActions, JobsModel } from '@glaceon/ui';
 /** Adapts application services to the intents and models the React tree uses. */
 
 export function arrangeActionsFor(
-  arrangement: ArrangementService,
+  services: { readonly arrangement: ArrangementService; readonly transfers: TabTransferService },
   refocus: () => void,
 ): ArrangeActions {
+  const { arrangement, transfers } = services;
   return {
+    moveToWindow: (tab, window) => {
+      void transfers.moveTab(
+        tab,
+        window === undefined ? { kind: 'newWindow' } : { kind: 'window', windowId: window },
+      );
+    },
+    tearOff: (tab, screen) => {
+      void transfers.moveTab(tab, { kind: 'point', x: screen.x, y: screen.y });
+    },
     beginRename: (target) => arrangement.beginRename(target),
     commitRename: (name) => {
       arrangement.commitRename(name);

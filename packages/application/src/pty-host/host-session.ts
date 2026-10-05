@@ -4,6 +4,7 @@ import { FlowController, type FlowWatermarks } from './flow-controller';
 import { OutputBatcher, type BatchLimits } from './output-batcher';
 import type { ProcessInspector } from './process-inspector';
 import type { PtyProcess } from './pty-process';
+import type { DetachBuffer } from './detach-buffer';
 import type { SessionOutput } from './session-output';
 
 export interface FlowSettings {
@@ -30,6 +31,8 @@ export class HostSession {
   readonly #flow: FlowController;
   readonly #subscriptions: Disposable[];
   readonly #deps: HostSessionDeps;
+  #output: SessionOutput;
+  #onExit: (exit: PtyExit) => void;
   #foreground: string;
   #shellName: Promise<string> | undefined;
   #exited = false;
@@ -38,13 +41,15 @@ export class HostSession {
     this.#id = id;
     this.#process = process;
     this.#deps = deps;
+    this.#output = deps.output;
+    this.#onExit = deps.onExit;
     this.#foreground = process.foregroundProcess;
     this.#flow = new FlowController(process, deps.flow?.watermarks);
     this.#batcher = new OutputBatcher(
       deps.scheduler,
       (chunk) => {
         this.#flow.sent(chunk.byteLength);
-        deps.output.data(id, chunk);
+        this.#output.data(id, chunk);
       },
       deps.flow?.batch,
     );
@@ -70,6 +75,31 @@ export class HostSession {
     this.#process.kill();
   }
 
+  /** Delivers pending output to the current owner, then buffers everything into `buffer`. */
+  detach(buffer: DetachBuffer, onExit: (exit: PtyExit) => void): void {
+    this.#batcher.flush();
+    this.#output = buffer;
+    this.#onExit = onExit;
+  }
+
+  /**
+   * Hands the session to a new owner: what was buffered while detached is replayed first.
+   * The old owner's unacknowledged bytes are forgotten so output is not stuck paused.
+   */
+  attach(
+    buffer: DetachBuffer,
+    owner: { output: SessionOutput; onExit: (exit: PtyExit) => void },
+  ): void {
+    this.#flow.reset();
+    this.#output = owner.output;
+    this.#onExit = owner.onExit;
+    buffer.replay(this.#id, {
+      output: owner.output,
+      sent: (bytes) => this.#flow.sent(bytes),
+      exited: (exit) => owner.onExit(exit),
+    });
+  }
+
   acknowledge(bytes: number): void {
     this.#flow.acknowledged(bytes);
   }
@@ -84,7 +114,7 @@ export class HostSession {
     this.#foreground = name;
     void this.#resolveShellName().then((shell) => {
       if (this.#exited || this.#foreground !== name) return;
-      this.#deps.output.process(this.#id, { name, busy: name !== shell });
+      this.#output.process(this.#id, { name, busy: name !== shell });
     });
   }
 
@@ -101,7 +131,7 @@ export class HostSession {
     for (const subscription of this.#subscriptions) subscription.dispose();
     this.#batcher.flush();
     this.#batcher.dispose();
-    this.#deps.output.exit(this.#id, exit);
-    this.#deps.onExit(exit);
+    this.#output.exit(this.#id, exit);
+    this.#onExit(exit);
   }
 }

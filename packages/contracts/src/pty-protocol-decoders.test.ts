@@ -86,3 +86,16 @@ describe('process monitoring messages', () => {
     expect(decodePtyHostMessage({ t: 'processes', sessions: 'x' })).toBeUndefined();
   });
 });
+
+describe('session transfer messages', () => {
+  it('decodes detach and attach', () => {
+    expect(decodePtyClientMessage({ t: 'detach', sid: 'a' })).toEqual({ t: 'detach', sid: 'a' });
+    expect(decodePtyClientMessage({ t: 'attach', sid: 'a', reqId: 1 })).toBeDefined();
+    expect(decodePtyClientMessage({ t: 'attach', sid: 'a' })).toBeUndefined();
+    expect(decodePtyHostMessage({ t: 'detached', sid: 'a' })).toBeDefined();
+    expect(decodePtyHostMessage({ t: 'detached' })).toBeUndefined();
+    expect(decodePtyHostMessage({ t: 'attached', reqId: 1, pid: 5 })).toBeDefined();
+    expect(decodePtyHostMessage({ t: 'attached', reqId: 1, message: 'gone' })).toBeDefined();
+    expect(decodePtyHostMessage({ t: 'attached', reqId: 1, pid: 'x' })).toBeUndefined();
+  });
+});

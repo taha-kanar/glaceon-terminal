@@ -4,6 +4,10 @@ import type { Disposable, TerminalSize } from '@glaceon/domain';
 export interface TerminalView extends Disposable {
   /** Renders output; `written` is called once the chunk has been processed. */
   write(chunk: Uint8Array, written?: () => void): void;
+  /** Shows a snapshot of another view (serialized screen and scrollback). */
+  restore(snapshot: string): void;
+  /** Resolves once every chunk written so far has been processed. */
+  flush(): Promise<void>;
   /** Fits the view to its container and returns the resulting grid size. */
   fit(): TerminalSize;
   focus(): void;
