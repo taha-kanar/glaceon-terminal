@@ -98,3 +98,24 @@ test.describe('settings panel', () => {
     await expect.poll(() => panes(window)).toBe(2);
   });
 });
+
+test('the title bar gear and the app menu open settings; Escape closes them', async ({
+  app,
+  window,
+}) => {
+  await window.ready();
+  const panel = window.page.getByTestId('settings-panel');
+  await window.page.getByTestId('settings-button').click();
+  await expect(panel).toBeVisible();
+  await window.press('Escape');
+  await expect(panel).toHaveCount(0);
+
+  // The menu leaves focus in the terminal; the panel must still hear Escape.
+  await app.evaluate(({ Menu }) => {
+    const appMenu = Menu.getApplicationMenu()?.items[0]?.submenu;
+    appMenu?.items.find((item) => item.label === 'Settings…')?.click();
+  });
+  await expect(panel).toBeVisible();
+  await window.press('Escape');
+  await expect(panel).toHaveCount(0);
+});

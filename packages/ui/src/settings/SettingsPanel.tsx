@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { useStore } from '../hooks/use-store';
 import type { SettingsSection } from './section';
 import type { SettingsPanelModel } from './settings-panel-model';
@@ -23,6 +23,11 @@ export function SettingsPanel({
   );
   const [error, setError] = useState<string | undefined>(undefined);
   const section = sections.find((s) => s.id === active) ?? sections[0];
+  const drawer = useRef<HTMLElement>(null);
+  // Take focus from the terminal, which would otherwise swallow Escape (e.g. opened from the menu).
+  useEffect(() => {
+    drawer.current?.focus();
+  }, []);
   // Escape closes the panel wherever focus is (after recording a key it may be on <body>).
   useEffect(() => {
     const view = document.defaultView;
@@ -41,6 +46,8 @@ export function SettingsPanel({
   return (
     <div className="drawer-layer" data-testid="settings-panel" onMouseDown={onClose}>
       <aside
+        ref={drawer}
+        tabIndex={-1}
         className="drawer"
         role="dialog"
         aria-label="Settings"

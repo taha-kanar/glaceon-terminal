@@ -1195,6 +1195,25 @@ body.dragging-column * {
   cursor: default;
 }
 
+.titlebar-button {
+  -webkit-app-region: no-drag;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.titlebar-button:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text);
+}
+
 .process-indicator__dot {
   width: 7px;
   height: 7px;
@@ -1411,4 +1430,8 @@ body.dragging-column * {
 .app--quake {
   border-radius: 0 0 10px 10px;
   overflow: hidden;
+}
+
+.drawer:focus {
+  outline: none;
 }

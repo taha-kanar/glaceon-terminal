@@ -9,6 +9,7 @@ import { CommandPalette } from '../palette/CommandPalette';
 import { SearchBar } from '../search/SearchBar';
 import { SETTINGS_SECTIONS } from '../settings/sections';
 import { SettingsPanel } from '../settings/SettingsPanel';
+import { SettingsButton } from '../settings/SettingsButton';
 import { TabBar } from '../tabs/TabBar';
 import { JobsPanel } from '../jobs/JobsPanel';
 import { ProcessIndicator } from '../jobs/ProcessPopover';
@@ -42,7 +43,17 @@ export function App({ model }: AppProps): ReactElement {
         renaming={renaming}
         windows={windows}
         newTabLabel={model.labelFor(CommandIds.tabNew)}
-        trailing={<ProcessIndicator workspace={workspace} sessions={sessions} model={model.jobs} />}
+        trailing={
+          <>
+            <ProcessIndicator workspace={workspace} sessions={sessions} model={model.jobs} />
+            <SettingsButton
+              label={model.labelFor(CommandIds.settingsOpen)}
+              onClick={() => {
+                actions.runCommand(CommandIds.settingsOpen);
+              }}
+            />
+          </>
+        }
       />
       {problems.length > 0 && (
         <ProblemsBanner problems={problems} onOpenSettings={actions.openSettingsFile} />

@@ -72,9 +72,15 @@ describe('NodePtyProcess foreground and flow control', () => {
   it('names an idle shell the way the process inspector does', async () => {
     // macOS /bin/sh becomes bash under the same pid; argv[0] still says /bin/sh.
     const ptyProcess = factory.spawn({ ...base, file: '/bin/sh', args: [] });
-    await expect.poll(() => ptyProcess.foregroundProcess).not.toBe('');
-    const name = await new MacProcessInspector().nameOf(ptyProcess.pid);
-    expect(name).toBe(ptyProcess.foregroundProcess);
+    const inspector = new MacProcessInspector();
+    // Both names change while the shell starts; once it settles they must agree.
+    await expect
+      .poll(async () => {
+        const foreground = ptyProcess.foregroundProcess;
+        const name = await inspector.nameOf(ptyProcess.pid);
+        return foreground !== '' && name === ptyProcess.foregroundProcess;
+      })
+      .toBe(true);
     const exited = new Promise<PtyExit>((resolve) => ptyProcess.onExit(resolve));
     ptyProcess.kill();
     await exited;
