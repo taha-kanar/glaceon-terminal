@@ -52,6 +52,9 @@ async function flush(): Promise<void> {
   });
 }
 
+const tabNamed = (container: Element, name: string): Element | null =>
+  [...container.querySelectorAll('[role="tab"]')].find((tab) => tab.textContent === name) ?? null;
+
 describe('SettingsPanel', () => {
   it('shows why the quake shortcut is not active', () => {
     const { value, quakeStatus } = model();
@@ -90,6 +93,27 @@ describe('SettingsPanel', () => {
     unmount();
   });
 
+  it('picks a background image and shows its options', async () => {
+    const { value, update } = model();
+    const choose = vi.fn(() => Promise.resolve('/Users/me/wall.png'));
+    const { container, unmount } = render(
+      <SettingsPanel
+        model={{ ...value, chooseBackgroundImage: choose }}
+        sections={SETTINGS_SECTIONS}
+        initialSection="window"
+        onClose={vi.fn()}
+      />,
+    );
+    expect(container.querySelector('[name="backgroundImageFit"]')).toBeNull();
+    click(container.querySelector('[data-testid="choose-background"]'));
+    await flush();
+    expect(choose).toHaveBeenCalled();
+    expect(update).toHaveBeenCalledWith('backgroundImage', '/Users/me/wall.png');
+    click(container.querySelector('[name="backgroundBlur"]'));
+    expect(update).toHaveBeenCalledWith('backgroundBlur', true);
+    unmount();
+  });
+
   it('writes toggles and selects themes', async () => {
     const { value, update } = model();
     const { container, unmount } = render(
@@ -102,7 +126,7 @@ describe('SettingsPanel', () => {
     );
     click(container.querySelector('[name="cursorBlink"]'));
     expect(update).toHaveBeenCalledWith('cursorBlink', false);
-    click(container.querySelectorAll('[role="tab"]')[1] ?? null);
+    click(tabNamed(container, 'Themes'));
     click(container.querySelector('[data-testid="theme-nord"]'));
     await flush();
     expect(update).toHaveBeenCalledWith('theme', 'nord');
