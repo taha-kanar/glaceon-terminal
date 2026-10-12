@@ -1,3 +1,4 @@
+import { queryObjects } from 'node:v8';
 import { asSessionId, type ProcessSample, type PtyExit, type SessionId } from '@glaceon/domain';
 import { describe, expect, it } from 'vitest';
 import {
@@ -404,6 +405,28 @@ describe('process monitoring', () => {
 
 describe('moving sessions between connections', () => {
   const encode = (text: string) => new TextEncoder().encode(text);
+
+  it('allows the original output to be collected while its session moves to another owner', () => {
+    const { host } = setup();
+    const target = host.openConnection(new RecordingOutput());
+    const baseline = queryObjects(RecordingOutput, { format: 'count' });
+    const sid = asSessionId('moving');
+    // Keep the temporary owner off this stack before requesting a full garbage collection.
+    const detachFromTemporaryOwner = (): void => {
+      const source = host.openConnection(new RecordingOutput());
+      source.spawn({ sessionId: sid, size });
+      source.detach(sid);
+      host.closeConnection(source);
+    };
+    detachFromTemporaryOwner();
+    try {
+      expect(queryObjects(RecordingOutput, { format: 'count' })).toBe(baseline);
+      expect(target.attach(sid).ok).toBe(true);
+      expect(queryObjects(RecordingOutput, { format: 'count' })).toBe(baseline);
+    } finally {
+      host.dispose();
+    }
+  });
 
   it('delivers earlier output, buffers while detached and replays to the new owner', () => {
     const { host, processes, scheduler } = setup();

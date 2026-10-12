@@ -6,6 +6,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react';
+import { usePointerDrag } from '../hooks/use-pointer-drag';
 
 /** Pointer travel before a press on a tab becomes a drag. */
 const DRAG_THRESHOLD = 5;
@@ -77,6 +78,7 @@ export function useTabDrag(
   workspace: Workspace,
   onDrop: TabDropHandlers,
 ): TabDrag {
+  const startDrag = usePointerDrag();
   const [state, setState] = useState<TabDrag['state']>(undefined);
   const latest = useRef({ workspace, onDrop });
   useEffect(() => {
@@ -97,17 +99,17 @@ export function useTabDrag(
       setState({ tab, marker: drop.marker, tearing: isTearOff(element, move) });
     };
     const onUp = (up: PointerEvent): void => {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      setState(undefined);
       const element = list.current;
       if (drop === undefined || element === null) return;
       if (isTearOff(element, up))
         latest.current.onDrop.tearOff(tab, { x: up.screenX, y: up.screenY });
       else latest.current.onDrop.move(tab, drop.index);
     };
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
+    startDrag(event.currentTarget.ownerDocument, {
+      move: onMove,
+      up: onUp,
+      cleanup: () => setState(undefined),
+    });
   };
 
   return { state, onPointerDown };

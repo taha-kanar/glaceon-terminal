@@ -1,5 +1,5 @@
-import { asPaneId, err, ok } from '@glaceon/domain';
-import { describe, expect, it } from 'vitest';
+import { asPaneId, asSessionId, err, ok } from '@glaceon/domain';
+import { describe, expect, it, vi } from 'vitest';
 import { FakePtyPort, FakeTerminalView, SequentialIdGenerator } from '../testing';
 import { SessionManager } from './session-manager';
 import { TerminalSessionService } from './terminal-session-service';
@@ -95,6 +95,26 @@ describe('SessionManager', () => {
     manager.release(asPaneId('p2'));
     await starting;
     expect(pty.killed).toHaveLength(2);
+  });
+
+  it('cancels an incoming snapshot when its pane is released before mounting', async () => {
+    const { pty, manager, view } = setup();
+    const done = vi.fn();
+    const incoming = manager
+      .expect(pane, {
+        sessionId: asSessionId('moving'),
+        pid: 42,
+        shell: 'zsh',
+        snapshot: 'old scrollback',
+      })
+      .then(done);
+    manager.release(pane);
+    await Promise.resolve();
+    expect(done).toHaveBeenCalledWith(false);
+    await incoming;
+    await manager.open(pane, view);
+    expect(pty.spawned).toHaveLength(1);
+    expect(view.text).not.toContain('old scrollback');
   });
 
   it('focuses, clears and resolves cwd; focus requested early is applied after start', async () => {

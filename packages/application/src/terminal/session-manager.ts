@@ -149,6 +149,10 @@ export class SessionManager {
   release(pane: PaneId): void {
     const entry = this.#panes.get(pane);
     this.#prepared.delete(pane);
+    const incoming = this.#incoming.get(pane);
+    this.#incoming.delete(pane);
+    incoming?.done(false);
+    if (this.#focusRequest === pane) this.#focusRequest = undefined;
     if (entry === undefined) return;
     this.#panes.delete(pane);
     entry.wiring.dispose();

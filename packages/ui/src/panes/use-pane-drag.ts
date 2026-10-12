@@ -6,6 +6,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react';
+import { usePointerDrag } from '../hooks/use-pointer-drag';
 import type { PlacedPane } from './pane-geometry';
 
 export interface PaneDropTarget {
@@ -48,6 +49,7 @@ export function usePaneDrag(
   panes: readonly PlacedPane[],
   onDrop: (source: PaneId, target: PaneId, zone: DropZone) => void,
 ): PaneDrag {
+  const startDrag = usePointerDrag();
   const [source, setSource] = useState<PaneId | undefined>(undefined);
   const [target, setTarget] = useState<PaneDropTarget | undefined>(undefined);
   const latest = useRef({ panes, onDrop });
@@ -59,7 +61,6 @@ export function usePaneDrag(
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
-    setSource(pane);
     let current: PaneDropTarget | undefined;
     const onMove = (move: PointerEvent): void => {
       const box = container.current?.getBoundingClientRect();
@@ -77,14 +78,17 @@ export function usePaneDrag(
       setTarget(current);
     };
     const onUp = (): void => {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      setSource(undefined);
-      setTarget(undefined);
       if (current !== undefined) latest.current.onDrop(pane, current.pane, current.zone);
     };
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
+    startDrag(event.currentTarget.ownerDocument, {
+      move: onMove,
+      up: onUp,
+      cleanup: () => {
+        setSource(undefined);
+        setTarget(undefined);
+      },
+    });
+    setSource(pane);
   };
 
   return { source, target, onPointerDown };

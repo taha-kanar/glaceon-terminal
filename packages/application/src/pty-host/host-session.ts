@@ -30,7 +30,8 @@ export class HostSession {
   readonly #batcher: OutputBatcher;
   readonly #flow: FlowController;
   readonly #subscriptions: Disposable[];
-  readonly #deps: HostSessionDeps;
+  readonly #inspector: ProcessInspector;
+  readonly #shellName: string;
   #output: SessionOutput;
   #onExit: (exit: PtyExit) => void;
   #foreground: string;
@@ -39,7 +40,9 @@ export class HostSession {
   constructor(id: SessionId, process: PtyProcess, deps: HostSessionDeps) {
     this.#id = id;
     this.#process = process;
-    this.#deps = deps;
+    // Only the current owner may be retained: output/onExit change during a transfer.
+    this.#inspector = deps.inspector;
+    this.#shellName = deps.shellName;
     this.#output = deps.output;
     this.#onExit = deps.onExit;
     this.#foreground = process.foregroundProcess;
@@ -127,10 +130,10 @@ export class HostSession {
   }
 
   #resolveShellName(): Promise<string> {
-    return this.#deps.inspector
+    return this.#inspector
       .nameOf(this.#process.pid)
       .catch(() => undefined)
-      .then((name) => name ?? this.#deps.shellName);
+      .then((name) => name ?? this.#shellName);
   }
 
   #exit(exit: PtyExit): void {

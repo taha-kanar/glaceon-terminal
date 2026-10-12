@@ -91,7 +91,11 @@ export class TerminalSessionService {
     const process = new Emitter<ForegroundProcess>();
     wiring.add(
       pty.onData(sessionId, (chunk) => {
-        view.write(chunk, () => pty.acknowledge(sessionId, chunk.byteLength));
+        const bytes = chunk.byteLength;
+        view.write(chunk, () => {
+          // xterm can finish parsing after exit/detach has forgotten the session's ack state.
+          if (!wiring.isDisposed) pty.acknowledge(sessionId, bytes);
+        });
       }),
     );
     wiring.add(pty.onProcess(sessionId, (state) => process.emit(state)));

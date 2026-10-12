@@ -61,13 +61,15 @@ export class TabTransferCoordinator {
   /** A window finished wiring up; returns how many imports it is about to receive. */
   ready(windowId: number): { readonly pending: number; readonly flush: () => void } {
     this.#ready.add(windowId);
-    const queued = this.#queued.get(windowId) ?? [];
-    this.#queued.delete(windowId);
-    const window = this.#deps.windows().find((w) => w.id === windowId);
     return {
-      pending: queued.length,
+      pending: this.#queued.get(windowId)?.length ?? 0,
       flush: () => {
-        for (const request of queued) window?.importTab(request);
+        const queued = this.#queued.get(windowId) ?? [];
+        this.#queued.delete(windowId);
+        const window = this.#deps.windows().find((w) => w.id === windowId);
+        for (const request of queued) {
+          if (this.#pending.has(request.transferId)) window?.importTab(request);
+        }
       },
     };
   }
@@ -126,6 +128,12 @@ export class TabTransferCoordinator {
     const pending = this.#pending.get(transferId);
     if (pending === undefined) return;
     this.#pending.delete(transferId);
+    const queued = this.#queued.get(pending.target);
+    if (queued !== undefined) {
+      const remaining = queued.filter((request) => request.transferId !== transferId);
+      if (remaining.length === 0) this.#queued.delete(pending.target);
+      else this.#queued.set(pending.target, remaining);
+    }
     pending.timer.dispose();
     pending.resolve(ok);
   }

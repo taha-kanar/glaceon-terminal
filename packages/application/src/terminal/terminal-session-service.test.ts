@@ -101,6 +101,22 @@ describe('TerminalSessionService.open', () => {
 });
 
 describe('TerminalSession events', () => {
+  it.each(['exit', 'close', 'detach'] as const)(
+    'ignores pending write acknowledgements after %s',
+    async (end) => {
+      const { pty, view, service } = setup();
+      const result = await service.open(view);
+      if (!result.ok) throw new Error('expected session');
+      view.autoAcknowledge = false;
+      pty.emitData(result.value.id, 'last output');
+      if (end === 'exit') pty.emitExit(result.value.id, { exitCode: 0 });
+      else if (end === 'close') result.value.close();
+      else await result.value.detach();
+      view.pendingWrites.forEach((done) => done());
+      expect(pty.acknowledged).toEqual([]);
+    },
+  );
+
   it('acknowledges rendered output and reports process changes and exits', async () => {
     const { pty, view, service } = setup();
     const result = await service.open(view);

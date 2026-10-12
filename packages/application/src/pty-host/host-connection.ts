@@ -113,8 +113,9 @@ export class HostConnection {
     if (session === undefined) return false;
     this.#owned.delete(sessionId);
     const buffer = this.#deps.detachedSessions.park(sessionId, session);
+    const { registry } = this.#deps;
     session.detach(buffer, () => {
-      this.#deps.registry.remove(sessionId);
+      registry.remove(sessionId);
     });
     this.#deps.output.detached(sessionId);
     return true;

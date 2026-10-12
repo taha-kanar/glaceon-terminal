@@ -98,6 +98,33 @@ describe('TabTransferCoordinator', () => {
       { id: 2, title: 'Window 2', current: false },
     ]);
   });
+
+  it('drops timed-out snapshots while keeping other queued transfers', async () => {
+    const { windows, timers, coordinator } = setup();
+    const expired = coordinator.transfer(1, { payload, target: { kind: 'window', windowId: 2 } });
+    const active = coordinator.transfer(1, { payload, target: { kind: 'window', windowId: 2 } });
+    timers[0]?.();
+    expect(await expired).toBe(false);
+
+    const ready = coordinator.ready(2);
+    expect(ready.pending).toBe(1);
+    ready.flush();
+    ready.flush();
+    expect(windows[1]?.received).toHaveLength(1);
+    coordinator.result(2, { transferId: windows[1]!.received[0]!.transferId, ok: true });
+    expect(await active).toBe(true);
+  });
+
+  it('does not deliver a queued transfer that expires between ready and flush', async () => {
+    const { windows, timers, coordinator } = setup();
+    const moved = coordinator.transfer(1, { payload, target: { kind: 'window', windowId: 2 } });
+    const ready = coordinator.ready(2);
+    timers[0]?.();
+    expect(await moved).toBe(false);
+    ready.flush();
+    expect(windows[1]?.received).toEqual([]);
+    expect(coordinator.ready(2).pending).toBe(0);
+  });
 });
 
 describe('decodeTabTransferRequest', () => {
