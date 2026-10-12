@@ -1,6 +1,8 @@
 import type { SearchablePane, SearchTargets, TerminalViewRegistry } from '@glaceon/application';
 import { Emitter, type Disposable, type PaneId, type TerminalLink } from '@glaceon/domain';
+import { AtlasRecycler } from './atlas-recycler';
 import { XtermTerminalView, type XtermViewOptions } from './xterm-terminal-view';
+import type { WebglBudget } from './xterm-webgl';
 
 export interface PaneLinkActivation {
   readonly pane: PaneId;
@@ -24,6 +26,16 @@ export interface PaneSelection {
  */
 export const WEBGL_CONTEXT_BUDGET = 12;
 
+/**
+ * Atlas texture bytes, every WebGL context's copy counted, past which the renderers are
+ * rebuilt to drop the atlas. The GPU process grew about 3.3 times this much in a truecolor
+ * soak; text in the 16 ANSI colors needs a few MB per context.
+ */
+export const ATLAS_RECYCLE_BYTES = 128 * 1024 * 1024;
+const ATLAS_RECYCLE_INTERVAL_MS = 60_000;
+/** Released atlas pages watched for leaks (the newest). */
+const RELEASED_PAGES_WATCHED = 256;
+
 interface Entry {
   readonly view: XtermTerminalView;
   readonly focus: Disposable;
@@ -45,14 +57,33 @@ export class XtermViewRegistry implements TerminalViewRegistry, SearchTargets {
   #options: XtermViewOptions;
   readonly #budget: number;
   #contexts = 0;
-  readonly #webgl = {
+  #contextLosses = 0;
+  #atlasSwaps = 0;
+  #atlasRecycles = 0;
+  #released: WeakRef<HTMLCanvasElement>[] = [];
+  readonly #recycler = new AtlasRecycler({
+    bytes: () => this.#atlasTextureBytes(),
+    recycle: () => {
+      this.#atlasRecycles++;
+      // Once no renderer holds the atlas it is freed; `release` re-attaches the visible views.
+      for (const { view } of this.#entries.values()) view.releaseWebgl();
+    },
+    limit: ATLAS_RECYCLE_BYTES,
+    minIntervalMs: ATLAS_RECYCLE_INTERVAL_MS,
+    now: () => performance.now(),
+    schedule: (callback, delayMs) => {
+      setTimeout(() => requestIdleCallback(callback, { timeout: 2000 }), delayMs);
+    },
+  });
+  readonly #webgl: WebglBudget = {
     acquire: (): boolean => {
       if (this.#contexts >= this.#budget) return false;
       this.#contexts++;
       return true;
     },
-    release: (): void => {
+    release: (atlasPages): void => {
       this.#contexts--;
+      this.#watchReleased(atlasPages);
       // Hand the freed context to a visible pane that had to fall back to the DOM renderer.
       queueMicrotask(() => {
         for (const pane of this.#entries.keys()) {
@@ -60,6 +91,13 @@ export class XtermViewRegistry implements TerminalViewRegistry, SearchTargets {
           if (!this.#hidden.has(pane)) this.#entries.get(pane)?.view.upgradeRenderer();
         }
       });
+    },
+    atlasChanged: (change) => {
+      if (change === 'swap') this.#atlasSwaps++;
+      this.#recycler.check();
+    },
+    contextLost: () => {
+      this.#contextLosses++;
     },
   };
 
@@ -71,6 +109,70 @@ export class XtermViewRegistry implements TerminalViewRegistry, SearchTargets {
 
   get size(): number {
     return this.#entries.size;
+  }
+
+  /** Bytes of the distinct glyph atlas pages the window's WebGL views draw with. */
+  get atlasBytes(): number {
+    const pages = new Set<HTMLCanvasElement>();
+    for (const { view } of this.#entries.values()) {
+      for (const page of view.atlasPages()) pages.add(page);
+    }
+    let bytes = 0;
+    for (const page of pages) bytes += page.width * page.height * 4;
+    return bytes;
+  }
+
+  /** Times a view's glyph atlas was swapped for another (each one redraws every glyph). */
+  get atlasSwaps(): number {
+    return this.#atlasSwaps;
+  }
+
+  /** Times the renderers were rebuilt to free an oversized atlas. */
+  get atlasRecycles(): number {
+    return this.#atlasRecycles;
+  }
+
+  /** Every WebGL context uploads each page of its atlas as a texture of its own. */
+  #atlasTextureBytes(): number {
+    let bytes = 0;
+    for (const { view } of this.#entries.values()) {
+      for (const page of view.atlasPages()) bytes += page.width * page.height * 4;
+    }
+    return bytes;
+  }
+
+  /** WebGL contexts the browser took away unasked. */
+  get contextLosses(): number {
+    return this.#contextLosses;
+  }
+
+  /**
+   * Bytes of atlas pages that released renderers drew with, no view draws with now, and are
+   * still alive: a leak once garbage has been collected (leak tests read it after a GC).
+   */
+  get leakedAtlasBytes(): number {
+    const live = new Set<HTMLCanvasElement>();
+    for (const { view } of this.#entries.values()) {
+      for (const page of view.atlasPages()) live.add(page);
+    }
+    let bytes = 0;
+    for (const reference of this.#released) {
+      const page = reference.deref();
+      if (page !== undefined && !live.has(page)) bytes += page.width * page.height * 4;
+    }
+    return bytes;
+  }
+
+  #watchReleased(pages: readonly HTMLCanvasElement[]): void {
+    const known = new Set(this.#released.map((reference) => reference.deref()));
+    for (const page of pages) {
+      if (!known.has(page)) this.#released.push(new WeakRef(page));
+    }
+    if (this.#released.length > RELEASED_PAGES_WATCHED) {
+      this.#released = this.#released
+        .filter((reference) => reference.deref() !== undefined)
+        .slice(-RELEASED_PAGES_WATCHED);
+    }
   }
 
   snapshot(pane: PaneId): string | undefined {

@@ -123,11 +123,18 @@ function dispatch(
 
 /**
  * Serves one renderer connection over a MessagePort. Disposing (or the renderer
- * going away) closes the connection and kills its sessions.
+ * going away) closes the connection and kills its sessions. `onClose` hears only of the
+ * renderer going away.
  */
-export function servePtyConnection(port: MainMessagePort, host: PtySessionHost): Disposable {
+export function servePtyConnection(
+  port: MainMessagePort,
+  host: PtySessionHost,
+  onClose?: () => void,
+): Disposable {
   const connection = host.openConnection(new PortSessionOutput(port));
+  let closed = false;
   const close = toDisposable(() => {
+    closed = true;
     host.closeConnection(connection);
     port.close();
   });
@@ -135,7 +142,11 @@ export function servePtyConnection(port: MainMessagePort, host: PtySessionHost):
     const message = decodePtyClientMessage(data);
     if (message !== undefined) dispatch(message, { connection, port });
   });
-  port.on('close', () => close.dispose());
+  port.on('close', () => {
+    if (closed) return;
+    close.dispose();
+    onClose?.();
+  });
   port.start();
   return close;
 }

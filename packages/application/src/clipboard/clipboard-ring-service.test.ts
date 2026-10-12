@@ -1,4 +1,4 @@
-import { err, ok, type Snippet } from '@glaceon/domain';
+import { err, MAX_RING_CLIP_LENGTH, ok, type Snippet } from '@glaceon/domain';
 import { describe, expect, it } from 'vitest';
 import { ManualScheduler } from '../testing';
 import { SnippetLibrary } from '../snippet/snippet-library';
@@ -34,6 +34,26 @@ describe('ClipboardRingService', () => {
     scheduler.advance(5000);
     await settle();
     expect(service.ring.get()).toHaveLength(3);
+  });
+
+  it('keeps huge copies on the system clipboard only', async () => {
+    const huge = 'x'.repeat(MAX_RING_CLIP_LENGTH + 1);
+    const clipboard = {
+      text: huge,
+      readText: () => Promise.resolve(clipboard.text),
+      writeText: (t: string) => {
+        clipboard.text = t;
+        return Promise.resolve();
+      },
+    };
+    const service = new ClipboardRingService({ clipboard, scheduler: new ManualScheduler() });
+    await service.start();
+    expect(service.ring.get()).toEqual([]);
+    await service.copy('small');
+    await service.copy(`${huge}y`);
+    expect(service.ring.get()).toEqual(['small']);
+    expect(clipboard.text).toBe(`${huge}y`);
+    service.dispose();
   });
 });
 

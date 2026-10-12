@@ -23,17 +23,35 @@ interface GcPerformance {
   readonly memory?: { readonly usedJSHeapSize: number };
 }
 
+let maxTextureSize: number | undefined;
+
+/** Asked once, of a throwaway context that is freed right away. */
+function readMaxTextureSize(): number {
+  const gl = document.createElement('canvas').getContext('webgl2');
+  if (gl === null) return 0;
+  const size = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
+  gl.getExtension('WEBGL_lose_context')?.loseContext();
+  return size;
+}
+
 function resources(views: XtermViewRegistry, sessions: SessionManager): ProbeResources {
   const gc = (globalThis as { gc?: () => void }).gc;
   gc?.();
   const heap = (performance as GcPerformance).memory?.usedJSHeapSize;
   const panes = views.panes();
+  maxTextureSize ??= readMaxTextureSize();
   return {
     views: views.size,
     sessions: sessions.info.get().size,
     domNodes: document.getElementsByTagName('*').length,
     webglViews: panes.filter((pane) => views.get(pane)?.rendererKind === 'webgl').length,
     ...(gc === undefined || heap === undefined ? {} : { heap }),
+    atlasBytes: views.atlasBytes,
+    atlasSwaps: views.atlasSwaps,
+    atlasRecycles: views.atlasRecycles,
+    leakedAtlasBytes: views.leakedAtlasBytes,
+    contextLosses: views.contextLosses,
+    maxTextureSize,
   };
 }
 
@@ -81,6 +99,7 @@ export function createE2EProbe(sources: ProbeSources): E2EProbe {
       const id = resolve(undefined);
       return id === undefined ? undefined : views.get(id)?.locateText(text);
     },
+    renders: (pane) => views.get(asPaneId(pane))?.renderCount ?? 0,
     resources: () => resources(views, sessions),
   };
 }

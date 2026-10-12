@@ -12,13 +12,13 @@ import {
   type Disposable,
   type TerminalSize,
 } from '@glaceon/domain';
-import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
-import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal, type ITheme } from '@xterm/xterm';
 import { readLogicalLine, TerminalLinkProvider, type LinkActivation } from './link-provider';
+import { XtermFit } from './xterm-fit';
+import { XtermWebgl, type WebglBudget } from './xterm-webgl';
 
 export interface XtermViewOptions {
   readonly fontFamily: string;
@@ -34,11 +34,31 @@ export interface XtermViewOptions {
   readonly searchColors: { readonly match: string; readonly active: string };
 }
 
-/** Hands out the window's limited WebGL contexts. */
-export interface WebglBudget {
-  /** False when no context is left; the view then renders with the DOM renderer. */
-  acquire(): boolean;
-  release(): void;
+/** Options that change the cell size, after which the terminal is fitted again. */
+const METRIC_OPTIONS: ReadonlySet<string> = new Set([
+  'fontFamily',
+  'fontSize',
+  'lineHeight',
+  'letterSpacing',
+]);
+
+/** Themes are rebuilt with every settings change; equal colors must not redraw every glyph. */
+function sameTheme(current: ITheme | undefined, next: ITheme): boolean {
+  if (current === next) return true;
+  if (current === undefined) return false;
+  const keys = Object.keys(next) as (keyof ITheme)[];
+  return (
+    keys.length === Object.keys(current).length && keys.every((key) => current[key] === next[key])
+  );
+}
+
+/** xterm 6 keeps this private: its render service pauses while the screen is out of view. */
+interface RenderServiceInternals {
+  readonly _core?: {
+    readonly _renderService?: {
+      _handleIntersectionChange?(entry: Pick<IntersectionObserverEntry, 'isIntersecting'>): void;
+    };
+  };
 }
 
 export interface XtermViewHooks {
@@ -50,32 +70,28 @@ export interface XtermViewHooks {
 export class XtermTerminalView implements TerminalView, SearchablePane {
   readonly element: HTMLElement;
   readonly #terminal: Terminal;
-  readonly #fitAddon = new FitAddon();
   readonly #searchAddon = new SearchAddon();
   readonly #serializeAddon = new SerializeAddon();
   #searchColors: XtermViewOptions['searchColors'];
   #lastSearchKey = '';
-  readonly #resizeObserver: ResizeObserver;
+  readonly #fit: XtermFit;
   readonly #focus = new Emitter<boolean>();
   readonly #cleanup: (() => void)[] = [];
-  readonly #budget: WebglBudget;
-  #webgl: WebglAddon | undefined;
+  readonly #webgl: XtermWebgl;
   #visible = true;
-  #pendingFit = 0;
+  #renders = 0;
 
   /** `host` must already be in the document so the renderer can measure the font. */
   constructor(host: HTMLElement, options: XtermViewOptions & XtermViewHooks) {
     this.element = host;
     const { searchColors, onLink, webgl, ...terminalOptions } = options;
     this.#searchColors = searchColors;
-    this.#budget = webgl;
     this.#terminal = new Terminal({
       allowProposedApi: true,
       allowTransparency: true,
       drawBoldTextInBrightColors: false,
       ...terminalOptions,
     });
-    this.#terminal.loadAddon(this.#fitAddon);
     this.#terminal.loadAddon(this.#searchAddon);
     this.#terminal.loadAddon(this.#serializeAddon);
     const links = this.#terminal.registerLinkProvider(
@@ -86,14 +102,14 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
     });
     this.#terminal.loadAddon(new Unicode11Addon());
     this.#terminal.unicode.activeVersion = '11';
-    this.#terminal.open(host);
-    this.#attachWebgl();
-    this.#trackFocus();
-
-    this.#resizeObserver = new ResizeObserver(() => {
-      this.#scheduleFit();
+    this.#terminal.onRender(() => {
+      this.#renders++;
     });
-    this.#resizeObserver.observe(host);
+    this.#terminal.open(host);
+    this.#webgl = new XtermWebgl(this.#terminal, webgl);
+    this.#webgl.attach();
+    this.#trackFocus();
+    this.#fit = new XtermFit(this.#terminal, host);
   }
 
   write(chunk: Uint8Array, written?: () => void): void {
@@ -137,8 +153,8 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
   }
 
   fit(): TerminalSize {
-    this.#fitAddon.fit();
-    return { cols: this.#terminal.cols, rows: this.#terminal.rows };
+    this.#fit.fit(true);
+    return this.size;
   }
 
   focus(): void {
@@ -163,11 +179,20 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
     return this.#focus.on(listener);
   }
 
+  /** Applies only what changed: a new theme redraws every glyph, new metrics refit. */
   setOptions(options: XtermViewOptions): void {
     const { searchColors, ...terminalOptions } = options;
     this.#searchColors = searchColors;
-    Object.assign(this.#terminal.options, terminalOptions);
-    this.#scheduleFit();
+    const current = this.#terminal.options;
+    const changed: Record<string, unknown> = {};
+    for (const key of Object.keys(terminalOptions) as (keyof typeof terminalOptions)[]) {
+      const value = terminalOptions[key];
+      const same =
+        key === 'theme' ? sameTheme(current.theme, terminalOptions.theme) : current[key] === value;
+      if (!same) changed[key] = value;
+    }
+    Object.assign(current, changed);
+    if (Object.keys(changed).some((key) => METRIC_OPTIONS.has(key))) this.#fit.schedule();
   }
 
   find(query: string, options: SearchOptions & { readonly backwards: boolean }): void {
@@ -237,21 +262,45 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
   setVisible(visible: boolean): void {
     if (visible === this.#visible) return;
     this.#visible = visible;
+    // A hidden view is not fitted; it is when shown again, and its pty keeps its size till then.
+    this.#fit.active = visible;
     if (visible) {
-      this.#attachWebgl();
-      this.#scheduleFit();
+      this.#webgl.attach();
+      this.#fit.schedule();
+      this.#resumeDrawing();
     } else {
-      this.#detachWebgl();
+      this.#webgl.detach();
     }
+  }
+
+  /**
+   * Hidden panes sit outside the viewport, so xterm stops drawing them (see `.pane--hidden`).
+   * It would resume once its IntersectionObserver reports the screen back, a frame or two
+   * after the pane shows up blank; this resumes at once, so the first frame has the text.
+   */
+  #resumeDrawing(): void {
+    const renderService = (this.#terminal as unknown as RenderServiceInternals)._core
+      ?._renderService;
+    renderService?._handleIntersectionChange?.({ isIntersecting: true });
   }
 
   /** Switches to WebGL if this view is visible and still on the DOM renderer. */
   upgradeRenderer(): void {
-    if (this.#visible) this.#attachWebgl();
+    if (this.#visible) this.#webgl.attach();
   }
 
   get rendererKind(): 'webgl' | 'dom' {
-    return this.#webgl === undefined ? 'dom' : 'webgl';
+    return this.#webgl.attached ? 'webgl' : 'dom';
+  }
+
+  /** Pages of the glyph atlas this view draws with; views with the same font and colors share it. */
+  atlasPages(): readonly HTMLCanvasElement[] {
+    return this.#webgl.atlasPages();
+  }
+
+  /** Frames drawn so far (e2e tests check that hidden panes stay idle). */
+  get renderCount(): number {
+    return this.#renders;
   }
 
   /**
@@ -277,20 +326,17 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
     return { cols: this.#terminal.cols, rows: this.#terminal.rows };
   }
 
-  dispose(): void {
-    cancelAnimationFrame(this.#pendingFit);
-    this.#resizeObserver.disconnect();
-    for (const cleanup of this.#cleanup) cleanup();
-    this.#focus.clear();
-    this.#detachWebgl();
-    this.#terminal.dispose();
+  /** Drops the WebGL renderer, and with it this view's hold on its glyph atlas. */
+  releaseWebgl(): void {
+    this.#webgl.detach();
   }
 
-  #scheduleFit(): void {
-    cancelAnimationFrame(this.#pendingFit);
-    this.#pendingFit = requestAnimationFrame(() => {
-      if (this.element.isConnected) this.#fitAddon.fit();
-    });
+  dispose(): void {
+    this.#fit.dispose();
+    for (const cleanup of this.#cleanup) cleanup();
+    this.#focus.clear();
+    this.#webgl.detach();
+    this.#terminal.dispose();
   }
 
   #trackFocus(): void {
@@ -304,28 +350,5 @@ export class XtermTerminalView implements TerminalView, SearchablePane {
       textarea.removeEventListener('focus', onFocus);
       textarea.removeEventListener('blur', onBlur);
     });
-  }
-
-  #attachWebgl(): void {
-    if (this.#webgl !== undefined || !this.#budget.acquire()) return;
-    try {
-      const webgl = new WebglAddon();
-      webgl.onContextLoss(() => {
-        if (this.#webgl === webgl) this.#detachWebgl();
-      });
-      this.#terminal.loadAddon(webgl);
-      this.#webgl = webgl;
-    } catch {
-      // No WebGL2 available: xterm keeps using its DOM renderer.
-      this.#webgl = undefined;
-      this.#budget.release();
-    }
-  }
-
-  #detachWebgl(): void {
-    if (this.#webgl === undefined) return;
-    this.#webgl.dispose();
-    this.#webgl = undefined;
-    this.#budget.release();
   }
 }

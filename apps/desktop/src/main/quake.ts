@@ -12,7 +12,10 @@ import { app, BrowserWindow, globalShortcut, screen } from 'electron';
 export interface QuakeOptions {
   readonly settings: ReadableStore<SettingsSnapshot>;
   readonly openWindow: () => TerminalWindow;
-  /** Pre-create the window at start-up (off under e2e, where tests create it on demand). */
+  /**
+   * Keep the window ready while the shortcut is on (off under e2e, where tests create it on
+   * demand). It holds a renderer, a shell and a WebGL context, so it goes when turned off.
+   */
   readonly prewarm: boolean;
   /** E2E: invisible window, and shortcuts that never reach the real system. */
   readonly hidden: boolean;
@@ -48,6 +51,7 @@ export function createQuake(options: QuakeOptions): QuakeController {
   let window: TerminalWindow | undefined;
   // Under e2e the window is invisible, so "focused" follows "visible".
   let shown = false;
+  const enabled = (): boolean => options.settings.get().settings.quakeEnabled;
 
   const ensureWindow = (): TerminalWindow => {
     if (window !== undefined && !window.browserWindow.isDestroyed()) return window;
@@ -60,7 +64,7 @@ export function createQuake(options: QuakeOptions): QuakeController {
       if (window === created) window = undefined;
       shown = false;
       // Closing its last tab closes the window; have the next one ready.
-      if (options.prewarm) setImmediate(ensureWindow);
+      if (options.prewarm && enabled()) setImmediate(ensureWindow);
     });
     return created;
   };
@@ -88,6 +92,8 @@ export function createQuake(options: QuakeOptions): QuakeController {
       hide: () => {
         shown = false;
         target.hide();
+        // Turned off while it was down: nothing can bring it back.
+        if (!enabled()) window?.forceClose();
       },
     };
   };
@@ -124,6 +130,14 @@ export function createQuake(options: QuakeOptions): QuakeController {
       },
     });
   }
-  if (options.prewarm) ensureWindow();
+  const prewarm = (): void => {
+    if (enabled()) {
+      if (options.prewarm) ensureWindow();
+    } else if (window !== undefined && !shown) {
+      window.forceClose();
+    }
+  };
+  prewarm();
+  options.settings.subscribe(prewarm);
   return controller;
 }

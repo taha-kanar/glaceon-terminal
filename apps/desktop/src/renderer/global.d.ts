@@ -43,6 +43,8 @@ export interface E2EProbe {
   fontSize(): number;
   rendererKind(pane: string): 'webgl' | 'dom' | undefined;
   locateText(text: string): { x: number; y: number } | undefined;
+  /** Frames a pane's terminal has drawn so far. */
+  renders(pane: string): number;
   /** Counts of live objects, for leak tests. */
   resources(): ProbeResources;
 }
@@ -54,4 +56,16 @@ export interface ProbeResources {
   readonly webglViews: number;
   /** Used JS heap after a forced GC (needs `--js-flags=--expose-gc`), in bytes. */
   readonly heap?: number;
+  /** Bytes of the glyph atlas pages the WebGL views draw with (each context uploads them). */
+  readonly atlasBytes: number;
+  /** Times a view's glyph atlas was swapped for another. */
+  readonly atlasSwaps: number;
+  /** Times the renderers were rebuilt to free an oversized atlas. */
+  readonly atlasRecycles: number;
+  /** Atlas pages of released renderers still alive after the GC: a leak. */
+  readonly leakedAtlasBytes: number;
+  /** WebGL contexts the browser took away unasked. */
+  readonly contextLosses: number;
+  /** The GPU's largest texture side, which bounds an atlas page. */
+  readonly maxTextureSize: number;
 }

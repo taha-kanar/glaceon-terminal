@@ -45,8 +45,13 @@ export function createPtyHostCompositionRoot(): PtyHostCompositionRoot {
         }
         const port = event.ports[0];
         if (port === undefined) return;
-        connections.get(message.connectionId)?.dispose();
-        connections.set(message.connectionId, servePtyConnection(port, host));
+        const { connectionId } = message;
+        connections.get(connectionId)?.dispose();
+        const served = servePtyConnection(port, host, () => {
+          // The renderer went away (a crash, say) without main asking to disconnect.
+          if (connections.get(connectionId) === served) connections.delete(connectionId);
+        });
+        connections.set(connectionId, served);
       });
       process.on('exit', () => {
         host.dispose();

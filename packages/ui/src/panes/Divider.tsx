@@ -35,14 +35,29 @@ export function Divider({ divider, container, onRatio }: DividerProps): ReactEle
         if (event.button !== 0) return;
         event.preventDefault();
         const document = event.currentTarget.ownerDocument;
-        const onMove = (move: PointerEvent): void => {
-          const ratio = pointerToRatio(move.clientX, move.clientY);
-          if (ratio !== undefined) onRatio(ratio);
+        const view = document.defaultView;
+        // Pointer events can come at 120 Hz and each ratio lays out every pane again, so moves
+        // send at most one ratio per frame; letting go sends the final one at once.
+        let latest: number | undefined;
+        let frame = 0;
+        const send = (): void => {
+          frame = 0;
+          if (latest !== undefined) onRatio(latest);
         };
         startDrag(document, {
-          move: onMove,
-          up: onMove,
-          cleanup: () => document.body.classList.remove(`dragging-${divider.axis}`),
+          move: (move) => {
+            latest = pointerToRatio(move.clientX, move.clientY) ?? latest;
+            if (frame === 0) frame = view?.requestAnimationFrame(send) ?? 0;
+          },
+          up: (up) => {
+            latest = pointerToRatio(up.clientX, up.clientY) ?? latest;
+            send();
+          },
+          cleanup: () => {
+            view?.cancelAnimationFrame(frame);
+            frame = 0;
+            document.body.classList.remove(`dragging-${divider.axis}`);
+          },
         });
         document.body.classList.add(`dragging-${divider.axis}`);
       }}

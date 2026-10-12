@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clipPreview, pushClip } from './clipboard-ring';
+import { clipPreview, MAX_RING_CLIP_LENGTH, pushClip } from './clipboard-ring';
 
 describe('clipboard ring', () => {
   it('keeps the newest ten unique clips', () => {
@@ -12,6 +12,12 @@ describe('clipboard ring', () => {
     expect(ring.filter((c) => c === 'clip 5')).toHaveLength(1);
     expect(pushClip(ring, '  \n')).toBe(ring);
     expect(pushClip(ring, 'clip 5')).toBe(ring);
+  });
+
+  it('leaves out clips past the size limit', () => {
+    const ring = pushClip([], 'small');
+    expect(pushClip(ring, 'x'.repeat(MAX_RING_CLIP_LENGTH))).toHaveLength(2);
+    expect(pushClip(ring, 'x'.repeat(MAX_RING_CLIP_LENGTH + 1))).toBe(ring);
   });
 
   it('previews clips on one line', () => {

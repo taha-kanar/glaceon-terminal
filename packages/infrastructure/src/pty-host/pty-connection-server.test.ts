@@ -62,8 +62,9 @@ function setup() {
     now: () => 0,
   });
   const port = new FakeMainPort();
-  const connection = servePtyConnection(port, host);
-  return { processes, host, port, connection, inspector, scheduler };
+  const closes = { count: 0 };
+  const connection = servePtyConnection(port, host, () => closes.count++);
+  return { processes, host, port, connection, inspector, scheduler, closes };
 }
 
 describe('servePtyConnection', () => {
@@ -136,8 +137,8 @@ describe('servePtyConnection', () => {
     expect(port.sent).toEqual([]);
   });
 
-  it('kills the sessions when the renderer side closes', () => {
-    const { port, processes, host } = setup();
+  it('kills the sessions when the renderer side closes, and says so', () => {
+    const { port, processes, host, closes } = setup();
     port.receive({ t: 'spawn', reqId: 1, sid: 'a', cols: 80, rows: 24 });
 
     port.remoteClose();
@@ -145,14 +146,17 @@ describe('servePtyConnection', () => {
     expect(processes.processes[0]?.killed).toBe(true);
     expect(port.closed).toBe(true);
     expect(host.sessionCount).toBe(1); // removed once the process actually exits
+    expect(closes.count).toBe(1);
   });
 
-  it('kills the sessions when disposed by main', () => {
-    const { port, processes, connection } = setup();
+  it('kills the sessions when disposed by main, without calling back', () => {
+    const { port, processes, connection, closes } = setup();
     port.receive({ t: 'spawn', reqId: 1, sid: 'a', cols: 80, rows: 24 });
 
     connection.dispose();
+    port.remoteClose();
 
     expect(processes.processes[0]?.killed).toBe(true);
+    expect(closes.count).toBe(0);
   });
 });

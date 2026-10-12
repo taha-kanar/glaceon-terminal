@@ -4,6 +4,7 @@ import { JsoncSnippetSource, MemoryClipboard, SystemClipboard } from '@glaceon/i
 import { ipcMain, shell } from 'electron';
 import { join } from 'node:path';
 
+/** Copies made in a window reach the system clipboard up to this size; the ring keeps less. */
 const MAX_CLIP_BYTES = 16 * 1024 * 1024;
 
 export interface Tools {

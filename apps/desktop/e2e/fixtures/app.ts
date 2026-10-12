@@ -1,8 +1,11 @@
+import { execFile } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { promisify } from 'node:util';
 import {
   _electron as electron,
+  expect,
   test as base,
   type ElectronApplication,
   type Page,
@@ -35,6 +38,8 @@ interface Probe {
   problems(): string[];
   fontSize(): number;
   locateText(text: string): { x: number; y: number } | undefined;
+  renders(pane: string): number;
+  rendererKind(pane: string): 'webgl' | 'dom' | undefined;
   resources(): ProbeResources;
 }
 
@@ -44,6 +49,12 @@ export interface ProbeResources {
   readonly domNodes: number;
   readonly webglViews: number;
   readonly heap?: number;
+  readonly atlasBytes: number;
+  readonly atlasSwaps: number;
+  readonly atlasRecycles: number;
+  readonly leakedAtlasBytes: number;
+  readonly contextLosses: number;
+  readonly maxTextureSize: number;
 }
 
 declare global {
@@ -62,6 +73,9 @@ export interface GlaceonWindow {
   problems(): Promise<string[]>;
   fontSize(): Promise<number>;
   resources(): Promise<ProbeResources>;
+  /** Frames a pane's terminal has drawn so far. */
+  renders(pane: string): Promise<number>;
+  rendererKind(pane: string): Promise<'webgl' | 'dom' | undefined>;
   /** ⌘-clicks the last occurrence of `text` in the active pane. */
   commandClick(text: string): Promise<void>;
   type(text: string): Promise<void>;
@@ -85,6 +99,8 @@ export function wrap(page: Page): GlaceonWindow {
     problems: () => page.evaluate(() => window.__glaceonE2E.problems()),
     fontSize: () => page.evaluate(() => window.__glaceonE2E.fontSize()),
     resources: () => page.evaluate(() => window.__glaceonE2E.resources()),
+    renders: (pane) => page.evaluate((id) => window.__glaceonE2E.renders(id), pane),
+    rendererKind: (pane) => page.evaluate((id) => window.__glaceonE2E.rendererKind(id), pane),
     commandClick: async (text) => {
       const point = await page.evaluate((t) => window.__glaceonE2E.locateText(t), text);
       if (point === undefined) throw new Error(`"${text}" is not on screen`);
@@ -191,4 +207,105 @@ export async function newWindowFrom(
 
 export const isPackagedRun = process.env['GLACEON_E2E_EXECUTABLE'] !== undefined;
 
-export { expect } from '@playwright/test';
+/** Panes of the active tab. */
+export async function activePanes(window: GlaceonWindow): Promise<readonly string[]> {
+  return (await window.workspace()).find((tab) => tab.active)?.panes ?? [];
+}
+
+export async function runPalette(page: Page, query: string): Promise<void> {
+  await page.keyboard.press('Meta+Shift+p');
+  await page.keyboard.type(query);
+  await expect(page.getByTestId('palette').getByRole('option').first()).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('palette')).toHaveCount(0);
+}
+
+/** Splits the active tab `count` times and returns the new panes once each has a prompt. */
+export async function openPanes(window: GlaceonWindow, count: number): Promise<string[]> {
+  const before = await activePanes(window);
+  for (let index = 0; index < count; index++) {
+    await window.press(index % 2 === 0 ? 'Meta+d' : 'Meta+Shift+d');
+  }
+  await expect.poll(async () => (await activePanes(window)).length).toBe(before.length + count);
+  const added = (await activePanes(window)).filter((pane) => !before.includes(pane));
+  for (const pane of added) {
+    await expect.poll(() => window.terminalText(pane)).toMatch(/[$#%>] ?$/);
+  }
+  return added;
+}
+
+/** Clicks a pane (focusing it) and types into it. */
+export async function typeInPane(window: GlaceonWindow, pane: string, text: string): Promise<void> {
+  await window.page.locator(`[data-pane="${pane}"]`).click();
+  await window.type(text);
+}
+
+const run = promisify(execFile);
+
+interface ProcessInfo {
+  readonly pid: number;
+  /** 'Browser' (main), 'Tab' (a renderer), 'GPU', 'Utility' (the pty host), … */
+  readonly type: string;
+  readonly cpuSeconds: number;
+}
+
+function processes(app: ElectronApplication): Promise<ProcessInfo[]> {
+  return app.evaluate(({ app: electronApp }) =>
+    electronApp.getAppMetrics().map((metric) => ({
+      pid: metric.pid,
+      type: metric.type,
+      cpuSeconds: metric.cpu.cumulativeCPUUsage ?? 0,
+    })),
+  );
+}
+
+/** Dirty bytes per memory category, as `footprint` reports them (IOSurface included). */
+async function footprint(pid: number): Promise<{ total: number; ioSurface: number }> {
+  const { stdout } = await run('/usr/bin/footprint', ['-p', String(pid), '-f', 'bytes']);
+  const total = Number(/Footprint: (\d+) B/.exec(stdout)?.[1] ?? Number.NaN);
+  let ioSurface = 0;
+  for (const line of stdout.split('\n')) {
+    const match = /^\s*(\d+) B\s+\d+ B\s+\d+ B\s+\d+\s+(.+?)\s*$/.exec(line);
+    if (match?.[2] === 'IOSurface') ioSurface += Number(match[1]);
+  }
+  return { total, ioSurface };
+}
+
+export interface MemorySample {
+  /** Footprint of the GPU process; WebGL drawing buffers and textures live there. */
+  readonly gpu: number;
+  /** The part of `gpu` held in IOSurfaces. */
+  readonly gpuIOSurface: number;
+  /** Footprint of all renderer processes together. */
+  readonly renderers: number;
+}
+
+/** Memory of the GPU and renderer processes, read with macOS `footprint`. */
+export async function gpuMemory(app: ElectronApplication): Promise<MemorySample> {
+  const all = await processes(app);
+  let gpu = 0;
+  let gpuIOSurface = 0;
+  let renderers = 0;
+  for (const { pid, type } of all) {
+    if (type !== 'GPU' && type !== 'Tab') continue;
+    const sample = await footprint(pid);
+    if (type === 'GPU') {
+      gpu += sample.total;
+      gpuIOSurface += sample.ioSurface;
+    } else {
+      renderers += sample.total;
+    }
+  }
+  return { gpu, gpuIOSurface, renderers };
+}
+
+/** CPU seconds used so far by each kind of process ('GPU', 'Tab' for renderers, …). */
+export async function cpuSeconds(app: ElectronApplication): Promise<Record<string, number>> {
+  const totals: Record<string, number> = {};
+  for (const { type, cpuSeconds: seconds } of await processes(app)) {
+    totals[type] = (totals[type] ?? 0) + seconds;
+  }
+  return totals;
+}
+
+export { expect };

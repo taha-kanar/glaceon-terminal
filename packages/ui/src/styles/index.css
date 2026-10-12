@@ -382,9 +382,12 @@ body,
   overflow: hidden;
 }
 
+/* Hidden panes keep their size (so they stay fitted) but sit outside the viewport: xterm
+   stops drawing a terminal it does not see intersect, and `visibility` alone does not count. */
 .pane--hidden {
   visibility: hidden;
   pointer-events: none;
+  transform: translateX(-200vw);
 }
 
 .pane__terminal {

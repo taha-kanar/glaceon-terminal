@@ -47,9 +47,31 @@ test('split inherits the working directory and panes navigate by direction', asy
   await expect.poll(async () => (await window.workspace())[0]?.panes.length).toBe(2);
 });
 
+test('a hidden tab keeps its output but draws nothing until shown', async ({ window }) => {
+  await window.ready();
+  const pane = await window.activePane();
+  if (pane === undefined) throw new Error('no pane');
+  await window.type('for i in $(seq 1 100); do echo "tick-$i"; sleep 0.02; done\n');
+  await window.press('Meta+t');
+  await window.ready();
+  const before = await window.renders(pane);
+  await expect.poll(() => window.terminalText(pane), { timeout: 15_000 }).toMatch(/^tick-100$/m);
+  expect(await window.renders(pane)).toBe(before);
+
+  await window.press('Meta+1');
+  await expect.poll(() => window.renders(pane)).toBeGreaterThan(before);
+});
+
 test('dragging a divider resizes both panes', async ({ window }) => {
   await window.press('Meta+d');
   await expect.poll(async () => (await window.workspace())[0]?.panes.length).toBe(2);
+  // Past 200 lines a change of columns waits for the drag to settle; the shell still gets it.
+  await window.ready();
+  await window.type('seq 1 300; echo "cols=$(tput cols)"\n');
+  await expect.poll(() => window.terminalText()).toMatch(/^cols=\d+$/m);
+  const columns = async (): Promise<number> =>
+    Number([...(await window.terminalText()).matchAll(/^cols=(\d+)$/gm)].at(-1)?.[1]);
+  const columnsBefore = await columns();
   const divider = window.page.getByTestId('divider');
   const box = await divider.boundingBox();
   if (box === null) throw new Error('divider not visible');
@@ -64,6 +86,10 @@ test('dragging a divider resizes both panes', async ({ window }) => {
   await expect
     .poll(async () => (await panes.first().boundingBox())?.width ?? 0)
     .toBeLessThan(before - 150);
+
+  // The right pane grew; its shell hears of the new width once the drag has settled.
+  await window.type('sleep 1; echo "cols=$(tput cols)"\n');
+  await expect.poll(columns).toBeGreaterThan(columnsBefore + 10);
 });
 
 test('a clean exit closes the pane, a failing one shows the exit overlay', async ({ window }) => {
