@@ -20,6 +20,7 @@ export {
   type TerminalSize,
 } from './terminal/terminal-size';
 export type { PtyExit } from './terminal/pty-exit';
+export { droppedPathsText, quoteShellPath } from './terminal/shell-path';
 
 export * from './pane/pane-tree';
 export * from './pane/pane-layout';

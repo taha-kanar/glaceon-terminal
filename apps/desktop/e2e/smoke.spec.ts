@@ -37,6 +37,7 @@ test('renderer is sandboxed and isolated', async ({ window }) => {
       'openLink',
       'openSettingsFile',
       'openSnippetsFile',
+      'pathForFile',
       'readClipboard',
       'transferTab',
       'updateSetting',

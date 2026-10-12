@@ -15,6 +15,7 @@ export function fakeActions(): FakeActions {
     dismissPane: vi.fn(),
     answerConfirmation: vi.fn(),
     openSettingsFile: vi.fn(),
+    dropOnPane: vi.fn(),
   };
 }
 

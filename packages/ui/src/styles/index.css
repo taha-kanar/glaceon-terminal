@@ -1393,6 +1393,17 @@ body.dragging-column * {
   opacity: 0.5;
 }
 
+.pane--file-drop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  border: 2px dashed var(--accent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
 .drop-preview {
   position: absolute;
   z-index: 5;

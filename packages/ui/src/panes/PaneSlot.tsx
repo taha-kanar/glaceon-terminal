@@ -1,9 +1,21 @@
 import type { SessionInfo } from '@glaceon/application';
 import type { PaneId } from '@glaceon/domain';
-import { useEffect, useRef, type MouseEvent, type PointerEvent, type ReactElement } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactElement,
+} from 'react';
 import type { AppActions, TerminalSlotBinder } from '../app/app-model';
 import { ExitOverlay } from './ExitOverlay';
 import { rectStyle, type PlacedPane } from './pane-geometry';
+
+/** Drags from other apps a pane takes: files from Finder, or text. */
+const accepts = (event: DragEvent): boolean =>
+  event.dataTransfer.types.includes('Files') || event.dataTransfer.types.includes('text/plain');
 
 export interface PaneSlotProps {
   readonly placed: PlacedPane;
@@ -22,6 +34,9 @@ export function PaneSlot(props: PaneSlotProps): ReactElement {
   const { placed, info, dimmed, bindSlot, actions } = props;
   const terminalRef = useRef<HTMLDivElement>(null);
   const { pane } = placed;
+  // Counted because enter/leave also fire when the pointer crosses the pane's children.
+  const [dragDepth, setDragDepth] = useState(0);
+  const takesDrops = info?.exit === undefined;
 
   useEffect(() => {
     const element = terminalRef.current;
@@ -34,6 +49,7 @@ export function PaneSlot(props: PaneSlotProps): ReactElement {
   if (placed.focused) classes.push('pane--focused');
   if (dimmed) classes.push('pane--dimmed');
   if (props.dragging) classes.push('pane--dragging');
+  if (dragDepth > 0) classes.push('pane--file-drop');
 
   return (
     <div
@@ -47,6 +63,28 @@ export function PaneSlot(props: PaneSlotProps): ReactElement {
       }}
       onContextMenu={(event) => {
         props.onContextMenu(pane, event);
+      }}
+      onDragEnter={(event) => {
+        if (!takesDrops || !accepts(event)) return;
+        event.preventDefault();
+        setDragDepth((depth) => depth + 1);
+      }}
+      onDragOver={(event) => {
+        if (!takesDrops || !accepts(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+      }}
+      onDragLeave={() => {
+        setDragDepth((depth) => Math.max(0, depth - 1));
+      }}
+      onDrop={(event) => {
+        setDragDepth(0);
+        if (!takesDrops || !accepts(event)) return;
+        event.preventDefault();
+        actions.dropOnPane(pane, {
+          files: Array.from(event.dataTransfer.files),
+          text: event.dataTransfer.getData('text/plain'),
+        });
       }}
     >
       <div ref={terminalRef} className="pane__terminal" />

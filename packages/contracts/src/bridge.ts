@@ -132,6 +132,11 @@ export interface GlaceonBridge {
   onSnippetsChanged(listener: (snapshot: SnippetsSnapshot) => void): Unsubscribe;
   openSnippetsFile(): void;
   readClipboard(): Promise<string>;
+  /**
+   * The path of a DOM `File` dropped from Finder; '' when it is not a file on disk.
+   * Typed loosely: contracts are shared with main, which has no DOM types.
+   */
+  pathForFile(file: unknown): string;
   /** Asks the user for a background image; resolves with its path, or undefined if cancelled. */
   chooseBackgroundImage(): Promise<string | undefined>;
   /** Newest first, at most ten. */

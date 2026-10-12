@@ -20,6 +20,11 @@ import type { ToolsModel } from '../tools/tools-model';
 /** Lets a pane slot host the terminal view of a pane. Returns the detach function. */
 export type TerminalSlotBinder = (pane: PaneId, element: HTMLElement) => () => void;
 
+export interface PaneDrop {
+  readonly files: readonly File[];
+  readonly text: string;
+}
+
 /** User intents the UI reports. The composition root routes them to application services. */
 export interface AppActions {
   readonly runCommand: (command: string, args?: CommandArgs) => void;
@@ -31,6 +36,8 @@ export interface AppActions {
   readonly dismissPane: (pane: PaneId) => void;
   readonly answerConfirmation: (confirmed: boolean) => void;
   readonly openSettingsFile: () => void;
+  /** Files or text dropped on a pane from another app. */
+  readonly dropOnPane: (pane: PaneId, drop: PaneDrop) => void;
 }
 
 /** Everything the React tree reads (stores) and reports (actions). */

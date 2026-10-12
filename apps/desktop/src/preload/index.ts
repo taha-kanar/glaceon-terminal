@@ -18,7 +18,7 @@ import {
   type WindowSummaryWire,
   type Unsubscribe,
 } from '@glaceon/contracts';
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron';
 
 // MessagePorts cannot cross the context bridge, so the port is re-posted to the page.
 ipcRenderer.on(PTY_PORT_IPC_CHANNEL, (event) => {
@@ -81,6 +81,7 @@ const bridge: GlaceonBridge = {
     listen(RendererChannel.snippetsChanged, (payload) => {
       listener(payload as SnippetsSnapshot);
     }),
+  pathForFile: (file) => (file instanceof File ? webUtils.getPathForFile(file) : ''),
   readClipboard: () => ipcRenderer.invoke(MainInvokeChannel.clipboardRead) as Promise<string>,
   chooseBackgroundImage: () =>
     ipcRenderer.invoke(MainInvokeChannel.backgroundChooseImage) as Promise<string | undefined>,

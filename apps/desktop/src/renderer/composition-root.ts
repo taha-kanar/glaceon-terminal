@@ -29,7 +29,7 @@ import {
   WorkspaceService,
 } from '@glaceon/application';
 import type { SettingsSnapshot } from '@glaceon/contracts';
-import { CommandIds, EMPTY_WORKSPACE, type Workspace } from '@glaceon/domain';
+import { CommandIds, droppedPathsText, EMPTY_WORKSPACE, type Workspace } from '@glaceon/domain';
 import {
   BrowserScheduler,
   MessagePortPtyClient,
@@ -245,6 +245,17 @@ export async function createRendererCompositionRoot(
       refocus();
     },
     openSettingsFile: () => windowPort.openSettingsFile(),
+    dropOnPane: (pane, drop) => {
+      const text =
+        drop.files.length > 0
+          ? droppedPathsText(drop.files.map((file) => bridge.pathForFile(file)))
+          : drop.text;
+      if (text === '') return;
+      workspace.focusPane(pane);
+      // A paste, not raw input: bracketed when the shell asks, so nothing runs on its own.
+      sessions.paste(pane, text);
+      sessions.focus(pane);
+    },
   };
 
   const model: AppModel = {
